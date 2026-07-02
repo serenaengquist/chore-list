@@ -189,6 +189,33 @@ export default function Dashboard() {
     setSelectedChore(null);
   };
 
+  const handleDuplicate = async (chore: Chore) => {
+    try {
+      const { error: insertError } = await supabase
+        .from('chores')
+        .insert([
+          {
+            name: chore.name,
+            room: chore.room,
+            recurrence: chore.recurrence,
+            due_next: chore.due_next || null,
+            notes: chore.notes || null,
+            status: 'pending',
+          },
+        ]);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      await fetchChores();
+      setSelectedChore(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to duplicate chore');
+      console.error('Error duplicating chore:', err);
+    }
+  };
+
   const sortedChores = [...chores].sort((a, b) => {
     if (a.status === 'pending' && b.status === 'done') return -1;
     if (a.status === 'done' && b.status === 'pending') return 1;
@@ -664,7 +691,11 @@ export default function Dashboard() {
               >
                 Edit
               </button>
-              <button className="btn-secondary" style={{ flex: 1 }}>
+              <button
+                className="btn-secondary"
+                onClick={() => handleDuplicate(selectedChore)}
+                style={{ flex: 1 }}
+              >
                 Duplicate
               </button>
             </div>
