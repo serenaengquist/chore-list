@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingChore, setEditingChore] = useState<Chore | null>(null);
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState<CreateFormData>({
     name: '',
@@ -118,27 +119,46 @@ export default function Dashboard() {
     try {
       setCreating(true);
 
-      const { error: insertError } = await supabase
-        .from('chores')
-        .insert([
-          {
+      if (editingChore) {
+        // Update existing chore
+        const { error: updateError } = await supabase
+          .from('chores')
+          .update({
             name: formData.name.trim(),
             room: formData.room.trim(),
             recurrence: formData.recurrence,
             due_next: formData.due_next || null,
             notes: formData.notes || null,
-            status: 'pending',
-          },
-        ]);
+          })
+          .eq('id', editingChore.id);
 
-      if (insertError) {
-        throw insertError;
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // Create new chore
+        const { error: insertError } = await supabase
+          .from('chores')
+          .insert([
+            {
+              name: formData.name.trim(),
+              room: formData.room.trim(),
+              recurrence: formData.recurrence,
+              due_next: formData.due_next || null,
+              notes: formData.notes || null,
+              status: 'pending',
+            },
+          ]);
+
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       // Refresh chores
       await fetchChores();
 
-      // Reset form and close modal
+      // Reset form and close modals
       setFormData({
         name: '',
         room: '',
@@ -147,12 +167,26 @@ export default function Dashboard() {
         notes: '',
       });
       setShowCreateForm(false);
+      setEditingChore(null);
+      setSelectedChore(null);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to create chore');
-      console.error('Error creating chore:', err);
+      setFormError(err instanceof Error ? err.message : 'Failed to save chore');
+      console.error('Error saving chore:', err);
     } finally {
       setCreating(false);
     }
+  };
+
+  const openEditForm = (chore: Chore) => {
+    setEditingChore(chore);
+    setFormData({
+      name: chore.name,
+      room: chore.room,
+      recurrence: chore.recurrence,
+      due_next: chore.due_next || '',
+      notes: chore.notes || '',
+    });
+    setSelectedChore(null);
   };
 
   const sortedChores = [...chores].sort((a, b) => {
@@ -302,7 +336,17 @@ export default function Dashboard() {
         <div style={{ textAlign: 'center', paddingTop: 'var(--space-xl)' }}>
           <button
             className="btn-primary"
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              setEditingChore(null);
+              setFormData({
+                name: '',
+                room: '',
+                recurrence: 'weekly',
+                due_next: '',
+                notes: '',
+              });
+              setShowCreateForm(true);
+            }}
             style={{ padding: 'var(--space-md) var(--space-xl)' }}
           >
             + Add a Chore
@@ -310,8 +354,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Create Chore Modal */}
-      {showCreateForm && (
+      {/* Create/Edit Form Modal */}
+      {(showCreateForm || editingChore) && (
         <div
           style={{
             position: 'fixed',
@@ -326,7 +370,7 @@ export default function Dashboard() {
             zIndex: 1000,
             padding: 'var(--space-lg)',
           }}
-          onClick={() => !creating && setShowCreateForm(false)}
+          onClick={() => !creating && (setShowCreateForm(false), setEditingChore(null))}
         >
           <div
             className="card"
@@ -335,9 +379,9 @@ export default function Dashboard() {
           >
             {/* Close Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ margin: 0 }}>NEW CHORE</h2>
+              <h2 style={{ margin: 0 }}>{editingChore ? 'EDIT CHORE' : 'NEW CHORE'}</h2>
               <button
-                onClick={() => !creating && setShowCreateForm(false)}
+                onClick={() => !creating && (setShowCreateForm(false), setEditingChore(null))}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -475,7 +519,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => !creating && (setShowCreateForm(false), setEditingChore(null))}
                   disabled={creating}
                   style={{ flex: 1 }}
                 >
@@ -487,7 +531,7 @@ export default function Dashboard() {
                   disabled={creating}
                   style={{ flex: 1 }}
                 >
-                  {creating ? 'Creating...' : 'Create Chore'}
+                  {creating ? (editingChore ? 'Saving...' : 'Creating...') : (editingChore ? 'Save Changes' : 'Create Chore')}
                 </button>
               </div>
             </form>
@@ -496,7 +540,7 @@ export default function Dashboard() {
       )}
 
       {/* Detail Modal */}
-      {selectedChore && !showCreateForm && (
+      {selectedChore && !editingChore && !showCreateForm && (
         <div
           style={{
             position: 'fixed',
@@ -613,11 +657,15 @@ export default function Dashboard() {
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
-              <button className="btn-secondary" style={{ flex: 1 }}>
-                Duplicate
+              <button
+                className="btn-secondary"
+                onClick={() => openEditForm(selectedChore)}
+                style={{ flex: 1 }}
+              >
+                Edit
               </button>
               <button className="btn-secondary" style={{ flex: 1 }}>
-                Edit
+                Duplicate
               </button>
             </div>
           </div>
