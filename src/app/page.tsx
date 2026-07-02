@@ -4,25 +4,27 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function Home() {
-  const [status, setStatus] = useState<string>('Checking Supabase connection...');
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('Initializing connection...');
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
   useEffect(() => {
     const checkConnection = async () => {
       try {
+        // Test Supabase connection
         const { data, error } = await supabase
           .from('users')
           .select('count()', { count: 'exact', head: true });
 
         if (error) {
-          setError(`Connection error: ${error.message}`);
-          setStatus('Failed to connect');
+          setStatus(`Connection failed: ${error.message}`);
+          setIsConnected(false);
         } else {
-          setStatus('✅ Connected to Supabase!');
+          setStatus('Connected to Supabase');
+          setIsConnected(true);
         }
       } catch (err) {
-        setError(`Unexpected error: ${err}`);
-        setStatus('Failed to connect');
+        setStatus(`Error: ${err}`);
+        setIsConnected(false);
       }
     };
 
@@ -30,63 +32,119 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-black dark:to-zinc-900">
-      <main className="flex flex-col items-center justify-center gap-8 py-20 px-4">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-black dark:text-white mb-2">
-            Chore List
-          </h1>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Next.js + Supabase + Vercel
-          </p>
+    <main className="container">
+      <section style={{ paddingBlock: 'var(--space-3xl)' }}>
+        <div className="text-center mb-lg">
+          <h1>CHORE LIST</h1>
+          <p className="text-muted">A retro-terminal task management system</p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8 max-w-md w-full">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-              <span className="text-2xl">🚀</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-3xl)' }}>
+          {/* Status Card */}
+          <article className="card">
+            <header className="card-header">
+              <span style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-mute)' }}>
+                // System Status
+              </span>
+              <span className={`chip ${isConnected ? 'chip-voltage' : ''}`}>
+                {isConnected ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </header>
+            <h3 style={{ marginBottom: 'var(--space-md)' }}>SUPABASE</h3>
+            <p>{status}</p>
+            <footer className="card-footer">
+              <span>v0.1.0</span>
+              <span>READY</span>
+            </footer>
+          </article>
+
+          {/* Setup Card */}
+          <div className="card-feature">
+            <header className="card-header" style={{ borderColor: 'var(--color-ink)', color: 'var(--color-ink)' }}>
+              <span style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-ink)' }}>
+                // Quick Start
+              </span>
+            </header>
+            <h3 style={{ marginBottom: 'var(--space-md)', color: 'var(--color-ink)' }}>CONFIGURE</h3>
+            <p style={{ color: 'var(--color-ink)', marginBottom: 'var(--space-md)' }}>
+              Update your Supabase queries in the code to start managing chores.
+            </p>
+            <button className="btn-primary" style={{ width: '100%' }}>
+              View Docs
+            </button>
+            <footer className="card-footer" style={{ borderColor: 'var(--color-ink)', color: 'var(--color-ink)' }}>
+              <span>Powered by</span>
+              <span>SUPABASE</span>
+            </footer>
+          </div>
+
+          {/* Features Card */}
+          <article className="card">
+            <header className="card-header">
+              <span style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-mute)' }}>
+                // Features
+              </span>
+            </header>
+            <h3 style={{ marginBottom: 'var(--space-md)' }}>READY TO BUILD</h3>
+            <ul style={{ listStyle: 'none', marginBottom: 'var(--space-md)' }}>
+              <li style={{ marginBottom: 'var(--space-sm)' }}>✓ Supabase connected</li>
+              <li style={{ marginBottom: 'var(--space-sm)' }}>✓ Glitchtype design system</li>
+              <li style={{ marginBottom: 'var(--space-sm)' }}>✓ Vercel ready</li>
+            </ul>
+            <footer className="card-footer">
+              <span>ENV</span>
+              <span>LOADED</span>
+            </footer>
+          </article>
+        </div>
+
+        {/* Terminal Panel */}
+        <section className="terminal">
+          <header className="terminal-titlebar">
+            <span className="terminal-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase' }}>chore-list.sh</span>
+            <span style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-mute)' }}>
+              SESSION 01
+            </span>
+          </header>
+          <div className="terminal-body">
+            <div className="terminal-line">
+              <span style={{ color: 'var(--color-ink)' }}>npm run dev</span>
+            </div>
+            <div className="terminal-line is-out">
+              <span style={{ color: 'var(--color-mute)' }}>compiled in 0.42s · 0 warnings</span>
+            </div>
+            <div className="terminal-line is-out">
+              <span style={{ color: 'var(--color-fg-muted)' }}>Ready on http://localhost:3000</span>
+            </div>
+            <div className="terminal-prompt">
+              <span className="terminal-caret"></span>
             </div>
           </div>
+        </section>
 
-          <h2 className="text-xl font-semibold text-center mb-4 text-black dark:text-white">
-            Supabase Status
-          </h2>
-
-          <div className="text-center">
-            <p className="text-lg font-medium mb-2 text-black dark:text-white">
-              {status}
-            </p>
-            {error && (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-              Your Supabase project is configured and ready to use.
-            </p>
-            <div className="space-y-2 text-xs text-zinc-500 dark:text-zinc-500">
-              <p>• Environment variables are configured</p>
-              <p>• Supabase client is ready</p>
-              <p>• Ready for deployment to Vercel</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            Next steps:
+        {/* Footer Section */}
+        <div style={{ marginTop: 'var(--space-3xl)', textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-fg-muted)', fontSize: 'var(--text-body-sm)', marginBottom: 'var(--space-md)' }}>
+            Built with Next.js 16 · Supabase · Vercel
           </p>
-          <ol className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 text-left">
-            <li>1. Create tables in your Supabase database</li>
-            <li>2. Update the query above to use your table</li>
-            <li>3. Build your application features</li>
-            <li>4. Deploy to Vercel with <code className="bg-zinc-200 dark:bg-zinc-800 px-2 py-1 rounded">git push</code></li>
-          </ol>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn-secondary">
+              Documentation
+            </button>
+            <button className="btn-secondary">
+              Deploy
+            </button>
+            <button className="btn-secondary">
+              GitHub
+            </button>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
