@@ -495,8 +495,29 @@ export default function Dashboard() {
   const pendingCount = chores.filter((c) => c.status === 'pending').length;
   const doneCount = chores.filter((c) => c.status === 'done').length;
 
-  const gridStyle = {
-    gridTemplateColumns: '44px 1fr 150px 150px',
+  // Flex-wrap row layout: checkbox + name stay on one line, room/recurrence
+  // wrap onto their own right-aligned line when the row is too narrow to fit
+  // all four (fixes horizontal overflow on mobile viewports).
+  const rowStyle = {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    alignItems: 'center' as const,
+    columnGap: 'var(--space-lg)',
+    rowGap: 'var(--space-xs)',
+  };
+  const checkboxSlotStyle = {
+    flex: '0 0 44px',
+    display: 'flex' as const,
+  };
+  const nameSlotStyle = {
+    flex: '1 1 160px',
+    minWidth: '120px',
+  };
+  const metaSlotStyle = {
+    flex: '0 0 auto',
+    marginLeft: 'auto',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
     gap: 'var(--space-lg)',
   };
 
@@ -633,12 +654,10 @@ export default function Dashboard() {
                   key={chore.id}
                   onClick={(e) => handleRowClick(chore, e)}
                   style={{
-                    display: 'grid',
-                    ...gridStyle,
+                    ...rowStyle,
                     paddingBlock: 'var(--space-md)',
                     paddingInline: 'var(--space-lg)',
                     borderBottom: '1px solid var(--color-surface-sunk)',
-                    alignItems: 'center',
                     cursor: 'pointer',
                     transition: 'background-color 80ms linear',
                   }}
@@ -649,25 +668,29 @@ export default function Dashboard() {
                     e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={chore.status === 'done'}
-                    onChange={(e) => toggleDone(chore.id, e as any)}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      cursor: 'pointer',
-                      accentColor: todayRoom.color,
-                    }}
-                  />
-                  <div style={{ fontWeight: '500', textAlign: 'left' }}>
+                  <div style={checkboxSlotStyle}>
+                    <input
+                      type="checkbox"
+                      checked={chore.status === 'done'}
+                      onChange={(e) => toggleDone(chore.id, e as any)}
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        cursor: 'pointer',
+                        accentColor: todayRoom.color,
+                      }}
+                    />
+                  </div>
+                  <div style={{ ...nameSlotStyle, fontWeight: '500', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {chore.name}
                   </div>
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
-                    {getRoomName(chore.room_id)}
-                  </div>
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
-                    {chore.recurrence}
+                  <div style={metaSlotStyle}>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
+                      {getRoomName(chore.room_id)}
+                    </div>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                      {chore.recurrence}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -783,8 +806,7 @@ export default function Dashboard() {
           {/* Header Row */}
           <div
             style={{
-              display: 'grid',
-              ...gridStyle,
+              ...rowStyle,
               paddingBlock: 'var(--space-md)',
               paddingInline: 'var(--space-lg)',
               borderBottom: 'var(--border-hairline)',
@@ -795,10 +817,12 @@ export default function Dashboard() {
               fontWeight: 'bold',
             }}
           >
-            <div style={{ textAlign: 'left' }}></div>
-            <div style={{ textAlign: 'left' }}>CHORE</div>
-            <div style={{ textAlign: 'right' }}>ROOM</div>
-            <div style={{ textAlign: 'right' }}>RECURRENCE</div>
+            <div style={checkboxSlotStyle}></div>
+            <div style={{ ...nameSlotStyle, textAlign: 'left' }}>CHORE</div>
+            <div style={metaSlotStyle}>
+              <div style={{ textAlign: 'right' }}>ROOM</div>
+              <div style={{ textAlign: 'right' }}>RECURRENCE</div>
+            </div>
           </div>
 
           {/* Chore Rows */}
@@ -809,12 +833,10 @@ export default function Dashboard() {
                 key={chore.id}
                 onClick={(e) => handleRowClick(chore, e)}
                 style={{
-                  display: 'grid',
-                  ...gridStyle,
+                  ...rowStyle,
                   paddingBlock: 'var(--space-md)',
                   paddingInline: 'var(--space-lg)',
                   borderBottom: '1px solid var(--color-surface-sunk)',
-                  alignItems: 'center',
                   cursor: 'pointer',
                   transition: 'background-color 80ms linear',
                   backgroundColor: chore.status === 'done' ? 'var(--color-surface-sunk)' : 'transparent',
@@ -831,44 +853,53 @@ export default function Dashboard() {
                   }
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={chore.status === 'done'}
-                  onChange={(e) => toggleDone(chore.id, e as any)}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    cursor: 'pointer',
-                    accentColor: choreRoom?.color || 'var(--color-voltage)',
-                  }}
-                />
+                <div style={checkboxSlotStyle}>
+                  <input
+                    type="checkbox"
+                    checked={chore.status === 'done'}
+                    onChange={(e) => toggleDone(chore.id, e as any)}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      accentColor: choreRoom?.color || 'var(--color-voltage)',
+                    }}
+                  />
+                </div>
 
                 <div
                   style={{
+                    ...nameSlotStyle,
                     textDecoration: chore.status === 'done' ? 'line-through' : 'none',
                     fontWeight: chore.status === 'pending' ? '500' : '400',
                     textAlign: 'left',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {chore.name}
                 </div>
 
-                <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-                  {choreRoom && (
-                    <div
-                      style={{
-                        width: '10px',
-                        height: '10px',
-                        backgroundColor: choreRoom.color,
-                        borderRadius: '1px',
-                      }}
-                    />
-                  )}
-                  {getRoomName(chore.room_id)}
-                </div>
+                <div style={metaSlotStyle}>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                    {choreRoom && (
+                      <div
+                        style={{
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: choreRoom.color,
+                          borderRadius: '1px',
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    {getRoomName(chore.room_id)}
+                  </div>
 
-                <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
-                  {chore.recurrence}
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                    {chore.recurrence}
+                  </div>
                 </div>
               </div>
             );
