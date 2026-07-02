@@ -11,11 +11,13 @@ import {
   selectFeaturedTasks,
   AppConfig,
 } from '@/lib/roomOfDay';
+import { Room, COLOR_PALETTE, validateRoomName } from '@/lib/rooms';
 
 interface Chore {
   id: string;
   name: string;
-  room: string;
+  room_id: string | null;
+  room: string; // Keep for backwards compatibility during migration
   status: 'pending' | 'done';
   due_next?: string;
   recurrence: 'daily' | 'weekly' | 'one-off';
@@ -24,7 +26,7 @@ interface Chore {
 
 interface CreateFormData {
   name: string;
-  room: string;
+  room_id: string | null;
   recurrence: 'daily' | 'weekly' | 'one-off';
   due_next?: string;
   notes?: string;
@@ -32,6 +34,7 @@ interface CreateFormData {
 
 export default function Dashboard() {
   const [chores, setChores] = useState<Chore[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
@@ -40,50 +43,68 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState<CreateFormData>({
     name: '',
-    room: '',
+    room_id: null,
     recurrence: 'weekly',
     due_next: '',
     notes: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Room management
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [showEditRoom, setShowEditRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [roomFormData, setRoomFormData] = useState({ name: '', color: '#FFFF00' });
+  const [roomFormError, setRoomFormError] = useState<string | null>(null);
+
   // Room of the Day state
   const [roomOfDayState, setRoomOfDayState] = useState<AppConfig | null>(null);
-  const [availableRooms, setAvailableRooms] = useState<string[]>([]);
+  const [todayRoom, setTodayRoom] = useState<Room | null>(null);
   const [featuredTasks, setFeaturedTasks] = useState<Chore[]>([]);
-  const [todayRoom, setTodayRoom] = useState<string | null>(null);
   const [showRoomOverride, setShowRoomOverride] = useState(false);
 
   useEffect(() => {
     const init = async () => {
+      await fetchRooms();
       await fetchChores();
       await fetchRoomOfDay();
     };
     init();
   }, []);
 
-  // Update featured tasks whenever room selection or chores change
+  // Update featured tasks when room or chores change
   useEffect(() => {
     if (!todayRoom || chores.length === 0) {
       setFeaturedTasks([]);
       return;
     }
 
-    // Get pending tasks for today's room, prioritize recurring tasks
     const roomTasks = chores
-      .filter((c) => c.room === todayRoom && c.status === 'pending')
+      .filter((c) => c.room_id === todayRoom.id && c.status === 'pending')
       .sort((a, b) => {
-        // Recurring tasks first
         const aRecurring = a.recurrence !== 'one-off' ? 0 : 1;
         const bRecurring = b.recurrence !== 'one-off' ? 0 : 1;
         if (aRecurring !== bRecurring) return aRecurring - bRecurring;
-        // Then by creation date
         return new Date(a.id).getTime() - new Date(b.id).getTime();
       });
 
     const selected = selectFeaturedTasks(roomTasks, 5);
     setFeaturedTasks(selected);
   }, [todayRoom, chores]);
+
+  const fetchRooms = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('rooms')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      setRooms(data || []);
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
+    }
+  };
 
   const fetchChores = async () => {
     try {
@@ -96,10 +117,7 @@ export default function Dashboard() {
         .order('status', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
+      if (fetchError) throw fetchError;
       setChores(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load chores');
@@ -109,40 +127,29 @@ export default function Dashboard() {
     }
   };
 
-  const fetchAvailableRooms = (choresList: Chore[]): string[] => {
-    const rooms = new Set<string>();
-    choresList.forEach((chore) => {
-      if (chore.room) rooms.add(chore.room);
-    });
-    return Array.from(rooms).sort();
-  };
-
   const fetchRoomOfDay = async () => {
     try {
-      // Get app config
+      if (rooms.length < 2) {
+        setTodayRoom(null);
+        return;
+      }
+
       const { data: config, error: configError } = await supabase
         .from('app_config')
         .select('*')
         .eq('owner', 'user')
         .single();
 
-      // Gracefully skip if table doesn't exist (setup not complete)
       if (configError) {
         const errorMsg = JSON.stringify(configError);
-        if (errorMsg.includes('app_config') || errorMsg.includes('relation') || configError.code === '42P01') {
-          console.warn('app_config table not yet created. Run SETUP_ROOM_OF_DAY.sql in your Supabase dashboard.');
+        if (errorMsg.includes('app_config') || errorMsg.includes('relation')) {
           return;
         }
-
-        // Skip if no row found (not an error, just empty)
-        if (configError.code !== 'PGRST116') {
-          throw configError;
-        }
+        if (configError.code !== 'PGRST116') throw configError;
       }
 
       let appConfig = config as AppConfig | null;
 
-      // If no config exists, try to create one (may fail if table not created yet)
       if (!appConfig) {
         const today = getTodayDateString();
         const { data: newConfig, error: insertError } = await supabase
@@ -153,23 +160,16 @@ export default function Dashboard() {
 
         if (insertError) {
           const errorMsg = JSON.stringify(insertError);
-          if (errorMsg.includes('app_config') || errorMsg.includes('relation')) {
-            console.warn('app_config table not yet created. Run SETUP_ROOM_OF_DAY.sql in your Supabase dashboard.');
-            return;
-          }
+          if (errorMsg.includes('app_config')) return;
           throw insertError;
         }
         appConfig = newConfig as AppConfig;
       }
 
-      // Get available rooms from chores
-      const currentChores = chores.length > 0 ? chores : await fetchChoresForRoomInit();
-      const rooms = fetchAvailableRooms(currentChores);
-      setAvailableRooms(rooms);
-
-      // Initialize or update cycle based on current rooms
+      // Build cycle from room IDs
+      const roomIds = rooms.map((r) => r.id);
       let { newCycle, newPointer } = initializeCycle(
-        rooms,
+        roomIds,
         appConfig.room_cycle || [],
         appConfig.cycle_pointer || 0
       );
@@ -180,7 +180,6 @@ export default function Dashboard() {
         newCycle = advanced.newCycle;
         newPointer = advanced.newPointer;
 
-        // Update DB with new cycle state
         await supabase
           .from('app_config')
           .update({
@@ -191,13 +190,16 @@ export default function Dashboard() {
           .eq('owner', 'user');
       }
 
-      // Determine today's room (considering override)
-      const room = getTodayRoom(
+      // Determine today's room ID (considering override)
+      const todayRoomId = getTodayRoom(
         newCycle,
         newPointer,
         appConfig.display_override_date,
         appConfig.display_override_room
       );
+
+      // Find the room object
+      const room = rooms.find((r) => r.id === todayRoomId);
 
       setRoomOfDayState({
         ...appConfig,
@@ -205,29 +207,109 @@ export default function Dashboard() {
         cycle_pointer: newPointer,
         cycle_last_advanced_date: getTodayDateString(),
       });
-      setTodayRoom(room);
+      setTodayRoom(room || null);
     } catch (err) {
       console.error('Error fetching room of day:', err);
     }
   };
 
-  const fetchChoresForRoomInit = async (): Promise<Chore[]> => {
-    const { data } = await supabase.from('chores').select('*');
-    return data || [];
+  const handleAddRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRoomFormError(null);
+
+    const nameError = validateRoomName(roomFormData.name);
+    if (nameError) {
+      setRoomFormError(nameError);
+      return;
+    }
+
+    try {
+      const { error: insertError } = await supabase
+        .from('rooms')
+        .insert([{ name: roomFormData.name.trim(), color: roomFormData.color }]);
+
+      if (insertError) throw insertError;
+
+      await fetchRooms();
+      await fetchRoomOfDay();
+
+      setRoomFormData({ name: '', color: '#FFFF00' });
+      setShowAddRoom(false);
+    } catch (err) {
+      setRoomFormError(err instanceof Error ? err.message : 'Failed to create room');
+    }
   };
 
-  const handleRoomOverride = async (newRoom: string) => {
+  const handleEditRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoom) return;
+
+    setRoomFormError(null);
+
+    const nameError = validateRoomName(roomFormData.name);
+    if (nameError) {
+      setRoomFormError(nameError);
+      return;
+    }
+
+    try {
+      const { error: updateError } = await supabase
+        .from('rooms')
+        .update({ name: roomFormData.name.trim(), color: roomFormData.color })
+        .eq('id', editingRoom.id);
+
+      if (updateError) throw updateError;
+
+      await fetchRooms();
+      await fetchRoomOfDay();
+
+      setRoomFormData({ name: '', color: '#FFFF00' });
+      setEditingRoom(null);
+      setShowEditRoom(false);
+    } catch (err) {
+      setRoomFormError(err instanceof Error ? err.message : 'Failed to update room');
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    const affectedChores = chores.filter((c) => c.room_id === roomId).length;
+    const roomName = rooms.find((r) => r.id === roomId)?.name;
+
+    const confirmDelete = window.confirm(
+      `Delete room "${roomName}"?\n\n${affectedChores} chore(s) will be untagged.\n\nThis cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+
+      if (deleteError) throw deleteError;
+
+      await fetchRooms();
+      await fetchChores();
+      await fetchRoomOfDay();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room');
+    }
+  };
+
+  const handleRoomOverride = async (roomId: string) => {
     try {
       const today = getTodayDateString();
       await supabase
         .from('app_config')
         .update({
           display_override_date: today,
-          display_override_room: newRoom,
+          display_override_room: roomId,
         })
         .eq('owner', 'user');
 
-      setTodayRoom(newRoom);
+      const room = rooms.find((r) => r.id === roomId);
+      setTodayRoom(room || null);
       setShowRoomOverride(false);
     } catch (err) {
       console.error('Error setting room override:', err);
@@ -248,14 +330,10 @@ export default function Dashboard() {
         .update({ status: newStatus })
         .eq('id', id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       setChores((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, status: newStatus } : c
-        )
+        prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
       );
     } catch (err) {
       console.error('Error updating chore:', err);
@@ -279,7 +357,7 @@ export default function Dashboard() {
       return;
     }
 
-    if (!formData.room.trim()) {
+    if (!formData.room_id) {
       setFormError('Room is required');
       return;
     }
@@ -288,29 +366,25 @@ export default function Dashboard() {
       setCreating(true);
 
       if (editingChore) {
-        // Update existing chore
         const { error: updateError } = await supabase
           .from('chores')
           .update({
             name: formData.name.trim(),
-            room: formData.room.trim(),
+            room_id: formData.room_id,
             recurrence: formData.recurrence,
             due_next: formData.due_next || null,
             notes: formData.notes || null,
           })
           .eq('id', editingChore.id);
 
-        if (updateError) {
-          throw updateError;
-        }
+        if (updateError) throw updateError;
       } else {
-        // Create new chore
         const { error: insertError } = await supabase
           .from('chores')
           .insert([
             {
               name: formData.name.trim(),
-              room: formData.room.trim(),
+              room_id: formData.room_id,
               recurrence: formData.recurrence,
               due_next: formData.due_next || null,
               notes: formData.notes || null,
@@ -318,23 +392,13 @@ export default function Dashboard() {
             },
           ]);
 
-        if (insertError) {
-          throw insertError;
-        }
+        if (insertError) throw insertError;
       }
 
-      // Refresh chores and room of day
       await fetchChores();
       await fetchRoomOfDay();
 
-      // Reset form and close modals
-      setFormData({
-        name: '',
-        room: '',
-        recurrence: 'weekly',
-        due_next: '',
-        notes: '',
-      });
+      setFormData({ name: '', room_id: null, recurrence: 'weekly', due_next: '', notes: '' });
       setShowCreateForm(false);
       setEditingChore(null);
       setSelectedChore(null);
@@ -350,7 +414,7 @@ export default function Dashboard() {
     setEditingChore(chore);
     setFormData({
       name: chore.name,
-      room: chore.room,
+      room_id: chore.room_id,
       recurrence: chore.recurrence,
       due_next: chore.due_next || '',
       notes: chore.notes || '',
@@ -365,7 +429,7 @@ export default function Dashboard() {
         .insert([
           {
             name: chore.name,
-            room: chore.room,
+            room_id: chore.room_id,
             recurrence: chore.recurrence,
             due_next: chore.due_next || null,
             notes: chore.notes || null,
@@ -373,9 +437,7 @@ export default function Dashboard() {
           },
         ]);
 
-      if (insertError) {
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
       await fetchChores();
       setSelectedChore(null);
@@ -392,9 +454,7 @@ export default function Dashboard() {
         .delete()
         .eq('id', id);
 
-      if (deleteError) {
-        throw deleteError;
-      }
+      if (deleteError) throw deleteError;
 
       await fetchChores();
       setSelectedChore(null);
@@ -402,6 +462,11 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : 'Failed to delete chore');
       console.error('Error deleting chore:', err);
     }
+  };
+
+  const getRoomName = (roomId: string | null): string => {
+    if (!roomId) return '(No room)';
+    return rooms.find((r) => r.id === roomId)?.name || '(Unknown room)';
   };
 
   const sortedChores = [...chores].sort((a, b) => {
@@ -421,11 +486,31 @@ export default function Dashboard() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)', paddingBlock: 'var(--space-3xl)' }}>
       {/* Header */}
-      <div>
-        <h1>CHORE BOARD</h1>
-        <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>
-          {pendingCount} pending · {doneCount} done
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1>CHORE BOARD</h1>
+          <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>
+            {pendingCount} pending · {doneCount} done
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setEditingRoom(null);
+            setRoomFormData({ name: '', color: '#FFFF00' });
+            setShowAddRoom(true);
+          }}
+          style={{
+            padding: 'var(--space-sm) var(--space-md)',
+            fontSize: 'var(--text-body-sm)',
+            fontFamily: 'var(--font-mono)',
+            border: '1px solid var(--color-fg)',
+            background: 'transparent',
+            color: 'var(--color-fg)',
+            cursor: 'pointer',
+          }}
+        >
+          + Room
+        </button>
       </div>
 
       {/* Loading */}
@@ -448,15 +533,15 @@ export default function Dashboard() {
       )}
 
       {/* Room of the Day Section */}
-      {!loading && availableRooms.length >= 2 && todayRoom && (
-        <div className="card" style={{ borderColor: 'var(--color-voltage)', backgroundColor: 'var(--color-surface)' }}>
+      {!loading && rooms.length >= 2 && todayRoom && (
+        <div className="card" style={{ borderColor: todayRoom.color, backgroundColor: 'var(--color-surface)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
             <div>
               <div style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
                 ROOM OF THE DAY
               </div>
-              <h2 style={{ margin: '0', marginTop: 'var(--space-sm)', color: 'var(--color-voltage)' }}>
-                {todayRoom}
+              <h2 style={{ margin: '0', marginTop: 'var(--space-sm)', color: todayRoom.color }}>
+                {todayRoom.name}
               </h2>
             </div>
             <button
@@ -479,23 +564,35 @@ export default function Dashboard() {
           {showRoomOverride && (
             <div style={{ marginBottom: 'var(--space-lg)', paddingBottom: 'var(--space-lg)', borderBottom: '1px dashed var(--color-hairline)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-                {availableRooms.filter((r) => r !== todayRoom).map((room) => (
-                  <button
-                    key={room}
-                    onClick={() => handleRoomOverride(room)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--color-fg)',
-                      textAlign: 'left',
-                      padding: 'var(--space-sm)',
-                      cursor: 'pointer',
-                      fontSize: 'var(--text-body-md)',
-                    }}
-                  >
-                    → {room}
-                  </button>
-                ))}
+                {rooms
+                  .filter((r) => r.id !== todayRoom.id)
+                  .map((room) => (
+                    <button
+                      key={room.id}
+                      onClick={() => handleRoomOverride(room.id)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-fg)',
+                        textAlign: 'left',
+                        padding: 'var(--space-sm)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-body-md)',
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: '12px',
+                          height: '12px',
+                          backgroundColor: room.color,
+                          borderRadius: '2px',
+                          marginRight: 'var(--space-sm)',
+                        }}
+                      />
+                      → {room.name}
+                    </button>
+                  ))}
               </div>
             </div>
           )}
@@ -532,14 +629,14 @@ export default function Dashboard() {
                       width: '20px',
                       height: '20px',
                       cursor: 'pointer',
-                      accentColor: 'var(--color-voltage)',
+                      accentColor: todayRoom.color,
                     }}
                   />
                   <div style={{ fontWeight: '500', textAlign: 'left' }}>
                     {chore.name}
                   </div>
                   <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
-                    {chore.room}
+                    {getRoomName(chore.room_id)}
                   </div>
                   <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
                     {chore.recurrence}
@@ -549,18 +646,106 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'center', padding: 'var(--space-lg)' }}>
-              No pending chores for {todayRoom} today
+              No pending chores for {todayRoom.name} today
             </div>
           )}
         </div>
       )}
 
+      {/* Room Management Section */}
+      {!loading && rooms.length > 0 && (
+        <div className="card" style={{ backgroundColor: 'var(--color-surface)' }}>
+          <h3 style={{ margin: '0 0 var(--space-lg) 0', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
+            ROOMS
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {rooms.map((room) => {
+              const roomChoreCount = chores.filter((c) => c.room_id === room.id).length;
+              return (
+                <div
+                  key={room.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 'var(--space-sm) var(--space-md)',
+                    borderBottom: '1px solid var(--color-surface-sunk)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                    <div
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        backgroundColor: room.color,
+                        borderRadius: '2px',
+                        border: '1px solid var(--color-fg)',
+                      }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 'var(--text-body-md)' }}>{room.name}</div>
+                      <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
+                        {roomChoreCount} chore{roomChoreCount !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                    <button
+                      onClick={() => {
+                        setEditingRoom(room);
+                        setRoomFormData({ name: room.name, color: room.color });
+                        setShowEditRoom(true);
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: 'var(--text-body-sm)',
+                        fontFamily: 'var(--font-mono)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-fg)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRoom(room.id)}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: 'var(--text-body-sm)',
+                        fontFamily: 'var(--font-mono)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-glitch-red)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Empty State */}
-      {!loading && !error && chores.length === 0 && (
+      {!loading && !error && chores.length === 0 && rooms.length > 0 && (
         <div className="card" style={{ textAlign: 'center', paddingBlock: 'var(--space-2xl)' }}>
           <div style={{ fontSize: '2rem', marginBottom: 'var(--space-md)' }}>📋</div>
           <h3 style={{ marginBottom: 'var(--space-sm)' }}>No chores yet</h3>
           <p className="text-muted">Add your first chore to get started.</p>
+        </div>
+      )}
+
+      {!loading && !error && rooms.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', paddingBlock: 'var(--space-2xl)' }}>
+          <div style={{ fontSize: '2rem', marginBottom: 'var(--space-md)' }}>🏠</div>
+          <h3 style={{ marginBottom: 'var(--space-sm)' }}>Create your first room</h3>
+          <p className="text-muted">Rooms organize your chores. Click "+ Room" to get started.</p>
         </div>
       )}
 
@@ -589,85 +774,88 @@ export default function Dashboard() {
           </div>
 
           {/* Chore Rows */}
-          {sortedChores.map((chore) => (
-            <div
-              key={chore.id}
-              onClick={(e) => handleRowClick(chore, e)}
-              style={{
-                display: 'grid',
-                ...gridStyle,
-                paddingBlock: 'var(--space-md)',
-                paddingInline: 'var(--space-lg)',
-                borderBottom: '1px solid var(--color-surface-sunk)',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'background-color 80ms linear',
-                backgroundColor: chore.status === 'done' ? 'var(--color-surface-sunk)' : 'transparent',
-                opacity: chore.status === 'done' ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (chore.status === 'pending') {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surface-sunk)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (chore.status === 'pending') {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              {/* Checkbox */}
-              <input
-                type="checkbox"
-                checked={chore.status === 'done'}
-                onChange={(e) => toggleDone(chore.id, e as any)}
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  cursor: 'pointer',
-                  accentColor: 'var(--color-voltage)',
-                }}
-              />
-
-              {/* Chore Name */}
+          {sortedChores.map((chore) => {
+            const choreRoom = rooms.find((r) => r.id === chore.room_id);
+            return (
               <div
+                key={chore.id}
+                onClick={(e) => handleRowClick(chore, e)}
                 style={{
-                  textDecoration: chore.status === 'done' ? 'line-through' : 'none',
-                  fontWeight: chore.status === 'pending' ? '500' : '400',
-                  textAlign: 'left',
+                  display: 'grid',
+                  ...gridStyle,
+                  paddingBlock: 'var(--space-md)',
+                  paddingInline: 'var(--space-lg)',
+                  borderBottom: '1px solid var(--color-surface-sunk)',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  transition: 'background-color 80ms linear',
+                  backgroundColor: chore.status === 'done' ? 'var(--color-surface-sunk)' : 'transparent',
+                  opacity: chore.status === 'done' ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (chore.status === 'pending') {
+                    e.currentTarget.style.backgroundColor = 'var(--color-surface-sunk)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (chore.status === 'pending') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
                 }}
               >
-                {chore.name}
-              </div>
+                <input
+                  type="checkbox"
+                  checked={chore.status === 'done'}
+                  onChange={(e) => toggleDone(chore.id, e as any)}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer',
+                    accentColor: choreRoom?.color || 'var(--color-voltage)',
+                  }}
+                />
 
-              {/* Room */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
-                {chore.room}
-              </div>
+                <div
+                  style={{
+                    textDecoration: chore.status === 'done' ? 'line-through' : 'none',
+                    fontWeight: chore.status === 'pending' ? '500' : '400',
+                    textAlign: 'left',
+                  }}
+                >
+                  {chore.name}
+                </div>
 
-              {/* Recurrence */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
-                {chore.recurrence}
+                <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+                  {choreRoom && (
+                    <div
+                      style={{
+                        width: '10px',
+                        height: '10px',
+                        backgroundColor: choreRoom.color,
+                        borderRadius: '1px',
+                      }}
+                    />
+                  )}
+                  {getRoomName(chore.room_id)}
+                </div>
+
+                <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                  {chore.recurrence}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Add Chore CTA */}
-      {!loading && !error && (
+      {!loading && !error && rooms.length > 0 && (
         <div style={{ textAlign: 'center', paddingTop: 'var(--space-xl)' }}>
           <button
             className="btn-primary"
             onClick={() => {
               setEditingChore(null);
-              setFormData({
-                name: '',
-                room: '',
-                recurrence: 'weekly',
-                due_next: '',
-                notes: '',
-              });
+              setFormData({ name: '', room_id: rooms[0]?.id || null, recurrence: 'weekly', due_next: '', notes: '' });
               setShowCreateForm(true);
             }}
             style={{ padding: 'var(--space-md) var(--space-xl)' }}
@@ -677,7 +865,226 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Create/Edit Form Modal */}
+      {/* Add Room Modal */}
+      {showAddRoom && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 'var(--space-lg)',
+          }}
+          onClick={() => setShowAddRoom(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: '400px', width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+              <h2 style={{ margin: 0 }}>ADD ROOM</h2>
+              <button
+                onClick={() => setShowAddRoom(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-fg)',
+                  padding: 0,
+                  lineHeight: '1',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {roomFormError && (
+              <div className="card" style={{ marginBottom: 'var(--space-lg)', borderColor: 'var(--color-glitch-red)', backgroundColor: 'var(--color-surface)' }}>
+                <div style={{ color: 'var(--color-glitch-red)', fontSize: 'var(--text-body-sm)' }}>
+                  {roomFormError}
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleAddRoom} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Room Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Kitchen"
+                  value={roomFormData.name}
+                  onChange={(e) => setRoomFormData({ ...roomFormData, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Color
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-sm)' }}>
+                  {COLOR_PALETTE.map((color) => (
+                    <button
+                      key={color.hex}
+                      type="button"
+                      onClick={() => setRoomFormData({ ...roomFormData, color: color.hex })}
+                      title={color.name}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '1',
+                        backgroundColor: color.hex,
+                        border: roomFormData.color === color.hex ? '3px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 'var(--space-md)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowAddRoom(false)}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Room Modal */}
+      {showEditRoom && editingRoom && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 'var(--space-lg)',
+          }}
+          onClick={() => setShowEditRoom(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: '400px', width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+              <h2 style={{ margin: 0 }}>EDIT ROOM</h2>
+              <button
+                onClick={() => setShowEditRoom(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-fg)',
+                  padding: 0,
+                  lineHeight: '1',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {roomFormError && (
+              <div className="card" style={{ marginBottom: 'var(--space-lg)', borderColor: 'var(--color-glitch-red)', backgroundColor: 'var(--color-surface)' }}>
+                <div style={{ color: 'var(--color-glitch-red)', fontSize: 'var(--text-body-sm)' }}>
+                  {roomFormError}
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleEditRoom} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Room Name
+                </label>
+                <input
+                  type="text"
+                  value={roomFormData.name}
+                  onChange={(e) => setRoomFormData({ ...roomFormData, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Color
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-sm)' }}>
+                  {COLOR_PALETTE.map((color) => (
+                    <button
+                      key={color.hex}
+                      type="button"
+                      onClick={() => setRoomFormData({ ...roomFormData, color: color.hex })}
+                      title={color.name}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '1',
+                        backgroundColor: color.hex,
+                        border: roomFormData.color === color.hex ? '3px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 'var(--space-md)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowEditRoom(false)}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Chore Form Modal */}
       {(showCreateForm || editingChore) && (
         <div
           style={{
@@ -700,7 +1107,6 @@ export default function Dashboard() {
             style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
               <h2 style={{ margin: 0 }}>{editingChore ? 'EDIT CHORE' : 'NEW CHORE'}</h2>
               <button
@@ -719,7 +1125,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Error */}
             {formError && (
               <div className="card" style={{ marginBottom: 'var(--space-lg)', borderColor: 'var(--color-glitch-red)', backgroundColor: 'var(--color-surface)' }}>
                 <div style={{ color: 'var(--color-glitch-red)', fontSize: 'var(--text-body-sm)' }}>
@@ -728,9 +1133,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Form */}
             <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-              {/* Name Field */}
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Chore Name *
@@ -750,27 +1153,35 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* Room Field */}
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Room *
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Kitchen, Bathroom"
-                  value={formData.room}
-                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                <select
+                  value={formData.room_id || ''}
+                  onChange={(e) => setFormData({ ...formData, room_id: e.target.value || null })}
                   disabled={creating}
                   style={{
                     width: '100%',
                     padding: '10px 13px',
                     fontFamily: 'var(--font-mono)',
                     fontSize: 'var(--text-body-md)',
+                    border: 'var(--border-hairline)',
+                    borderRadius: 'var(--radius-lg)',
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-fg)',
+                    cursor: 'pointer',
                   }}
-                />
+                >
+                  <option value="">Select a room</option>
+                  {rooms.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Recurrence Field */}
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Recurrence
@@ -797,7 +1208,6 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {/* Due Date Field */}
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Due Next
@@ -816,7 +1226,6 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* Notes Field */}
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Notes
@@ -837,7 +1246,6 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* Actions */}
               <div style={{ display: 'flex', gap: 'var(--space-md)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
                 <button
                   type="button"
@@ -848,12 +1256,7 @@ export default function Dashboard() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={creating}
-                  style={{ flex: 1 }}
-                >
+                <button type="submit" className="btn-primary" disabled={creating} style={{ flex: 1 }}>
                   {creating ? (editingChore ? 'Saving...' : 'Creating...') : (editingChore ? 'Save Changes' : 'Create Chore')}
                 </button>
               </div>
@@ -862,7 +1265,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* Chore Detail Modal */}
       {selectedChore && !editingChore && !showCreateForm && (
         <div
           style={{
@@ -885,7 +1288,6 @@ export default function Dashboard() {
             style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
               <h2 style={{ margin: 0 }}>{selectedChore.name}</h2>
               <button
@@ -904,7 +1306,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Checkbox in Detail */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
               <input
                 type="checkbox"
@@ -931,7 +1332,7 @@ export default function Dashboard() {
                   width: '24px',
                   height: '24px',
                   cursor: 'pointer',
-                  accentColor: 'var(--color-voltage)',
+                  accentColor: rooms.find((r) => r.id === selectedChore.room_id)?.color || 'var(--color-voltage)',
                 }}
               />
               <span style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
@@ -939,13 +1340,24 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Detail Fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Room
                 </label>
-                <div style={{ fontSize: 'var(--text-body-md)' }}>{selectedChore.room}</div>
+                <div style={{ fontSize: 'var(--text-body-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  {rooms.find((r) => r.id === selectedChore.room_id) && (
+                    <div
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: rooms.find((r) => r.id === selectedChore.room_id)?.color,
+                        borderRadius: '1px',
+                      }}
+                    />
+                  )}
+                  {getRoomName(selectedChore.room_id)}
+                </div>
               </div>
 
               <div>
@@ -978,7 +1390,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
               <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
                 <button
