@@ -7,9 +7,7 @@ interface Chore {
   id: string;
   name: string;
   room: string;
-  assigned_to: string | string[];
   status: 'pending' | 'done';
-  due_date?: string;
   due_next?: string;
   recurrence: 'daily' | 'weekly' | 'one-off';
   notes?: string;
@@ -35,7 +33,6 @@ export default function Dashboard() {
           id: '1',
           name: 'Take out trash',
           room: 'Kitchen',
-          assigned_to: 'Alex',
           status: 'pending',
           due_next: '2026-07-03',
           recurrence: 'weekly',
@@ -45,27 +42,24 @@ export default function Dashboard() {
           id: '2',
           name: 'Clean bathroom',
           room: 'Bathroom',
-          assigned_to: 'Jordan',
           status: 'pending',
           due_next: '2026-07-05',
           recurrence: 'weekly',
-          notes: 'Includes toilet, sink, mirror, floor',
+          notes: 'Toilet, sink, mirror, floor',
         },
         {
           id: '3',
           name: 'Vacuum living room',
           room: 'Living Room',
-          assigned_to: 'Morgan',
           status: 'done',
           due_next: '2026-07-09',
           recurrence: 'weekly',
-          notes: 'Focus on under couch cushions',
+          notes: 'Focus under couch cushions',
         },
         {
           id: '4',
           name: 'Wash dishes',
           room: 'Kitchen',
-          assigned_to: ['Alex', 'Morgan'],
           status: 'pending',
           due_next: '2026-07-02',
           recurrence: 'daily',
@@ -75,7 +69,6 @@ export default function Dashboard() {
           id: '5',
           name: 'Do laundry',
           room: 'Laundry',
-          assigned_to: 'Jordan',
           status: 'pending',
           due_next: '2026-07-04',
           recurrence: 'weekly',
@@ -91,8 +84,8 @@ export default function Dashboard() {
     }
   };
 
-  const toggleDone = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const toggleDone = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setChores((prev) =>
       prev.map((chore) =>
         chore.id === id
@@ -100,6 +93,14 @@ export default function Dashboard() {
           : chore
       )
     );
+  };
+
+  const handleRowClick = (chore: Chore, e: React.MouseEvent) => {
+    // Don't open modal if clicking checkbox
+    if ((e.target as HTMLElement).type === 'checkbox') {
+      return;
+    }
+    setSelectedChore(chore);
   };
 
   // Sort: pending first, done last
@@ -111,13 +112,6 @@ export default function Dashboard() {
 
   const pendingCount = chores.filter((c) => c.status === 'pending').length;
   const doneCount = chores.filter((c) => c.status === 'done').length;
-
-  const getAssigneeLabel = (assigned: string | string[]) => {
-    if (Array.isArray(assigned)) {
-      return assigned.join(', ');
-    }
-    return assigned;
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)', paddingBlock: 'var(--space-3xl)' }}>
@@ -164,7 +158,7 @@ export default function Dashboard() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '44px 1fr auto auto auto',
+              gridTemplateColumns: '44px 1fr auto auto',
               gap: 'var(--space-md)',
               paddingBlock: 'var(--space-md)',
               paddingInline: 'var(--space-lg)',
@@ -180,17 +174,16 @@ export default function Dashboard() {
             <div>CHORE</div>
             <div>ROOM</div>
             <div>RECURRENCE</div>
-            <div>ASSIGNED</div>
           </div>
 
           {/* Chore Rows */}
           {sortedChores.map((chore) => (
             <div
               key={chore.id}
-              onClick={() => setSelectedChore(chore)}
+              onClick={(e) => handleRowClick(chore, e)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '44px 1fr auto auto auto',
+                gridTemplateColumns: '44px 1fr auto auto',
                 gap: 'var(--space-md)',
                 paddingBlock: 'var(--space-md)',
                 paddingInline: 'var(--space-lg)',
@@ -244,11 +237,6 @@ export default function Dashboard() {
               <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
                 {chore.recurrence}
               </div>
-
-              {/* Assignee */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', whiteSpace: 'nowrap' }}>
-                {getAssigneeLabel(chore.assigned_to)}
-              </div>
             </div>
           ))}
         </div>
@@ -263,7 +251,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Detail Modal/Drawer */}
+      {/* Detail Modal */}
       {selectedChore && (
         <div
           style={{
@@ -298,6 +286,7 @@ export default function Dashboard() {
                   cursor: 'pointer',
                   color: 'var(--color-fg)',
                   padding: 0,
+                  lineHeight: '1',
                 }}
               >
                 ✕
@@ -310,8 +299,11 @@ export default function Dashboard() {
                 type="checkbox"
                 checked={selectedChore.status === 'done'}
                 onChange={(e) => {
-                  toggleDone(selectedChore.id);
-                  setSelectedChore({ ...selectedChore, status: selectedChore.status === 'pending' ? 'done' : 'pending' });
+                  const newStatus = selectedChore.status === 'pending' ? 'done' : 'pending';
+                  setChores((prev) =>
+                    prev.map((c) => (c.id === selectedChore.id ? { ...c, status: newStatus } : c))
+                  );
+                  setSelectedChore({ ...selectedChore, status: newStatus });
                 }}
                 style={{
                   width: '24px',
@@ -329,15 +321,6 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
-                  Due Next
-                </label>
-                <div style={{ fontSize: 'var(--text-body-md)' }}>
-                  {selectedChore.due_next ? new Date(selectedChore.due_next).toLocaleDateString() : 'No date'}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
                   Room
                 </label>
                 <div style={{ fontSize: 'var(--text-body-md)' }}>{selectedChore.room}</div>
@@ -350,14 +333,16 @@ export default function Dashboard() {
                 <div style={{ fontSize: 'var(--text-body-md)', textTransform: 'capitalize' }}>{selectedChore.recurrence}</div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
-                  Assigned To
-                </label>
-                <div style={{ fontSize: 'var(--text-body-md)' }}>
-                  {getAssigneeLabel(selectedChore.assigned_to)}
+              {selectedChore.due_next && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                    Due Next
+                  </label>
+                  <div style={{ fontSize: 'var(--text-body-md)' }}>
+                    {new Date(selectedChore.due_next).toLocaleDateString()}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {selectedChore.notes && (
                 <div>
