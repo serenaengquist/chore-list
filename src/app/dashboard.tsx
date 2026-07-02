@@ -172,13 +172,12 @@ export default function Dashboard() {
               letterSpacing: 'var(--tracking-wider)',
               color: 'var(--color-fg-muted)',
               fontWeight: 'bold',
-              textAlign: 'left',
             }}
           >
-            <div></div>
-            <div>CHORE</div>
-            <div>ROOM</div>
-            <div>RECURRENCE</div>
+            <div style={{ textAlign: 'left' }}></div>
+            <div style={{ textAlign: 'left' }}>CHORE</div>
+            <div style={{ textAlign: 'right' }}>ROOM</div>
+            <div style={{ textAlign: 'right' }}>RECURRENCE</div>
           </div>
 
           {/* Chore Rows */}
@@ -197,7 +196,6 @@ export default function Dashboard() {
                 transition: 'background-color 80ms linear',
                 backgroundColor: chore.status === 'done' ? 'var(--color-surface-sunk)' : 'transparent',
                 opacity: chore.status === 'done' ? 0.6 : 1,
-                textAlign: 'left',
               }}
               onMouseEnter={(e) => {
                 if (chore.status === 'pending') {
@@ -235,12 +233,12 @@ export default function Dashboard() {
               </div>
 
               {/* Room */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left' }}>
+              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
                 {chore.room}
               </div>
 
               {/* Recurrence */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
+              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
                 {chore.recurrence}
               </div>
             </div>
