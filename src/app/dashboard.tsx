@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
   const [creating, setCreating] = useState(false);
@@ -91,6 +92,18 @@ export default function Dashboard() {
     const selected = selectFeaturedTasks(roomTasks, 5);
     setFeaturedTasks(selected);
   }, [todayRoom, chores]);
+
+  // Auto-revert the delete confirmation after a few seconds of inactivity
+  useEffect(() => {
+    if (!confirmingDeleteId) return;
+    const timeout = setTimeout(() => setConfirmingDeleteId(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [confirmingDeleteId]);
+
+  // Reset the delete confirmation whenever the detail modal switches chores or closes
+  useEffect(() => {
+    setConfirmingDeleteId(null);
+  }, [selectedChore?.id]);
 
   const fetchRooms = async (): Promise<Room[]> => {
     try {
@@ -461,6 +474,7 @@ export default function Dashboard() {
 
       await fetchChores();
       setSelectedChore(null);
+      setConfirmingDeleteId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete chore');
       console.error('Error deleting chore:', err);
@@ -543,7 +557,18 @@ export default function Dashboard() {
               <div style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
                 ROOM OF THE DAY
               </div>
-              <h2 style={{ margin: '0', marginTop: 'var(--space-sm)', color: todayRoom.color }}>
+              <h2 style={{ margin: '0', marginTop: 'var(--space-sm)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: todayRoom.color,
+                    borderRadius: '2px',
+                    border: '1px solid var(--color-fg)',
+                    flexShrink: 0,
+                  }}
+                />
                 {todayRoom.name}
               </h2>
             </div>
@@ -1412,10 +1437,20 @@ export default function Dashboard() {
               </div>
               <button
                 className="btn-secondary"
-                onClick={() => handleDelete(selectedChore.id)}
-                style={{ borderColor: 'var(--color-glitch-red)', color: 'var(--color-glitch-red)' }}
+                onClick={() => {
+                  if (confirmingDeleteId === selectedChore.id) {
+                    handleDelete(selectedChore.id);
+                  } else {
+                    setConfirmingDeleteId(selectedChore.id);
+                  }
+                }}
+                style={
+                  confirmingDeleteId === selectedChore.id
+                    ? { backgroundColor: 'var(--color-glitch-red)', borderColor: 'var(--color-glitch-red)', color: 'var(--color-surface)' }
+                    : { borderColor: 'var(--color-glitch-red)', color: 'var(--color-glitch-red)' }
+                }
               >
-                Delete
+                {confirmingDeleteId === selectedChore.id ? 'Confirm Delete?' : 'Delete'}
               </button>
             </div>
           </div>
