@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  getTodayDateString,
+  shouldAdvanceCycle,
+  advanceCycle,
+  initializeCycle,
+  getTodayRoom,
+  selectFeaturedTasks,
+  AppConfig,
+} from '@/lib/roomOfDay';
 
 interface Chore {
   id: string;
@@ -38,9 +47,43 @@ export default function Dashboard() {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Room of the Day state
+  const [roomOfDayState, setRoomOfDayState] = useState<AppConfig | null>(null);
+  const [availableRooms, setAvailableRooms] = useState<string[]>([]);
+  const [featuredTasks, setFeaturedTasks] = useState<Chore[]>([]);
+  const [todayRoom, setTodayRoom] = useState<string | null>(null);
+  const [showRoomOverride, setShowRoomOverride] = useState(false);
+
   useEffect(() => {
-    fetchChores();
+    const init = async () => {
+      await fetchChores();
+      await fetchRoomOfDay();
+    };
+    init();
   }, []);
+
+  // Update featured tasks whenever room selection or chores change
+  useEffect(() => {
+    if (!todayRoom || chores.length === 0) {
+      setFeaturedTasks([]);
+      return;
+    }
+
+    // Get pending tasks for today's room, prioritize recurring tasks
+    const roomTasks = chores
+      .filter((c) => c.room === todayRoom && c.status === 'pending')
+      .sort((a, b) => {
+        // Recurring tasks first
+        const aRecurring = a.recurrence !== 'one-off' ? 0 : 1;
+        const bRecurring = b.recurrence !== 'one-off' ? 0 : 1;
+        if (aRecurring !== bRecurring) return aRecurring - bRecurring;
+        // Then by creation date
+        return new Date(a.id).getTime() - new Date(b.id).getTime();
+      });
+
+    const selected = selectFeaturedTasks(roomTasks, 5);
+    setFeaturedTasks(selected);
+  }, [todayRoom, chores]);
 
   const fetchChores = async () => {
     try {
@@ -63,6 +106,131 @@ export default function Dashboard() {
       console.error('Error fetching chores:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableRooms = (choresList: Chore[]): string[] => {
+    const rooms = new Set<string>();
+    choresList.forEach((chore) => {
+      if (chore.room) rooms.add(chore.room);
+    });
+    return Array.from(rooms).sort();
+  };
+
+  const fetchRoomOfDay = async () => {
+    try {
+      // Get app config
+      const { data: config, error: configError } = await supabase
+        .from('app_config')
+        .select('*')
+        .eq('owner', 'user')
+        .single();
+
+      // Gracefully skip if table doesn't exist (setup not complete)
+      if (configError) {
+        const errorMsg = JSON.stringify(configError);
+        if (errorMsg.includes('app_config') || errorMsg.includes('relation') || configError.code === '42P01') {
+          console.warn('app_config table not yet created. Run SETUP_ROOM_OF_DAY.sql in your Supabase dashboard.');
+          return;
+        }
+
+        // Skip if no row found (not an error, just empty)
+        if (configError.code !== 'PGRST116') {
+          throw configError;
+        }
+      }
+
+      let appConfig = config as AppConfig | null;
+
+      // If no config exists, try to create one (may fail if table not created yet)
+      if (!appConfig) {
+        const today = getTodayDateString();
+        const { data: newConfig, error: insertError } = await supabase
+          .from('app_config')
+          .insert([{ owner: 'user', cycle_last_advanced_date: today }])
+          .select()
+          .single();
+
+        if (insertError) {
+          const errorMsg = JSON.stringify(insertError);
+          if (errorMsg.includes('app_config') || errorMsg.includes('relation')) {
+            console.warn('app_config table not yet created. Run SETUP_ROOM_OF_DAY.sql in your Supabase dashboard.');
+            return;
+          }
+          throw insertError;
+        }
+        appConfig = newConfig as AppConfig;
+      }
+
+      // Get available rooms from chores
+      const currentChores = chores.length > 0 ? chores : await fetchChoresForRoomInit();
+      const rooms = fetchAvailableRooms(currentChores);
+      setAvailableRooms(rooms);
+
+      // Initialize or update cycle based on current rooms
+      let { newCycle, newPointer } = initializeCycle(
+        rooms,
+        appConfig.room_cycle || [],
+        appConfig.cycle_pointer || 0
+      );
+
+      // Check if we need to advance the cycle (new day)
+      if (shouldAdvanceCycle(appConfig.cycle_last_advanced_date)) {
+        const advanced = advanceCycle(newCycle, newPointer);
+        newCycle = advanced.newCycle;
+        newPointer = advanced.newPointer;
+
+        // Update DB with new cycle state
+        await supabase
+          .from('app_config')
+          .update({
+            room_cycle: newCycle,
+            cycle_pointer: newPointer,
+            cycle_last_advanced_date: getTodayDateString(),
+          })
+          .eq('owner', 'user');
+      }
+
+      // Determine today's room (considering override)
+      const room = getTodayRoom(
+        newCycle,
+        newPointer,
+        appConfig.display_override_date,
+        appConfig.display_override_room
+      );
+
+      setRoomOfDayState({
+        ...appConfig,
+        room_cycle: newCycle,
+        cycle_pointer: newPointer,
+        cycle_last_advanced_date: getTodayDateString(),
+      });
+      setTodayRoom(room);
+    } catch (err) {
+      console.error('Error fetching room of day:', err);
+    }
+  };
+
+  const fetchChoresForRoomInit = async (): Promise<Chore[]> => {
+    const { data } = await supabase.from('chores').select('*');
+    return data || [];
+  };
+
+  const handleRoomOverride = async (newRoom: string) => {
+    try {
+      const today = getTodayDateString();
+      await supabase
+        .from('app_config')
+        .update({
+          display_override_date: today,
+          display_override_room: newRoom,
+        })
+        .eq('owner', 'user');
+
+      setTodayRoom(newRoom);
+      setShowRoomOverride(false);
+    } catch (err) {
+      console.error('Error setting room override:', err);
     }
   };
 
@@ -155,8 +323,9 @@ export default function Dashboard() {
         }
       }
 
-      // Refresh chores
+      // Refresh chores and room of day
       await fetchChores();
+      await fetchRoomOfDay();
 
       // Reset form and close modals
       setFormData({
@@ -275,6 +444,114 @@ export default function Dashboard() {
           <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
             {error}
           </div>
+        </div>
+      )}
+
+      {/* Room of the Day Section */}
+      {!loading && availableRooms.length >= 2 && todayRoom && (
+        <div className="card" style={{ borderColor: 'var(--color-voltage)', backgroundColor: 'var(--color-surface)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+            <div>
+              <div style={{ fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
+                ROOM OF THE DAY
+              </div>
+              <h2 style={{ margin: '0', marginTop: 'var(--space-sm)', color: 'var(--color-voltage)' }}>
+                {todayRoom}
+              </h2>
+            </div>
+            <button
+              onClick={() => setShowRoomOverride(!showRoomOverride)}
+              style={{
+                background: 'none',
+                border: '1px solid var(--color-fg-muted)',
+                color: 'var(--color-fg)',
+                padding: 'var(--space-sm) var(--space-md)',
+                cursor: 'pointer',
+                fontSize: 'var(--text-body-sm)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              Change
+            </button>
+          </div>
+
+          {/* Room override dropdown */}
+          {showRoomOverride && (
+            <div style={{ marginBottom: 'var(--space-lg)', paddingBottom: 'var(--space-lg)', borderBottom: '1px dashed var(--color-hairline)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                {availableRooms.filter((r) => r !== todayRoom).map((room) => (
+                  <button
+                    key={room}
+                    onClick={() => handleRoomOverride(room)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-fg)',
+                      textAlign: 'left',
+                      padding: 'var(--space-sm)',
+                      cursor: 'pointer',
+                      fontSize: 'var(--text-body-md)',
+                    }}
+                  >
+                    → {room}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Featured tasks */}
+          {featuredTasks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {featuredTasks.map((chore) => (
+                <div
+                  key={chore.id}
+                  onClick={(e) => handleRowClick(chore, e)}
+                  style={{
+                    display: 'grid',
+                    ...gridStyle,
+                    paddingBlock: 'var(--space-md)',
+                    paddingInline: 'var(--space-lg)',
+                    borderBottom: '1px solid var(--color-surface-sunk)',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    transition: 'background-color 80ms linear',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--color-surface-sunk)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={chore.status === 'done'}
+                    onChange={(e) => toggleDone(chore.id, e as any)}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      accentColor: 'var(--color-voltage)',
+                    }}
+                  />
+                  <div style={{ fontWeight: '500', textAlign: 'left' }}>
+                    {chore.name}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
+                    {chore.room}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                    {chore.recurrence}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'center', padding: 'var(--space-lg)' }}>
+              No pending chores for {todayRoom} today
+            </div>
+          )}
         </div>
       )}
 
