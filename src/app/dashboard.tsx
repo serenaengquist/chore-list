@@ -65,9 +65,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     const init = async () => {
-      await fetchRooms();
+      const roomsData = await fetchRooms();
       await fetchChores();
-      await fetchRoomOfDay();
+      await fetchRoomOfDay(roomsData);
     };
     init();
   }, []);
@@ -92,7 +92,7 @@ export default function Dashboard() {
     setFeaturedTasks(selected);
   }, [todayRoom, chores]);
 
-  const fetchRooms = async () => {
+  const fetchRooms = async (): Promise<Room[]> => {
     try {
       const { data, error: fetchError } = await supabase
         .from('rooms')
@@ -100,9 +100,12 @@ export default function Dashboard() {
         .order('created_at', { ascending: true });
 
       if (fetchError) throw fetchError;
-      setRooms(data || []);
+      const roomsData = data || [];
+      setRooms(roomsData);
+      return roomsData;
     } catch (err) {
       console.error('Error fetching rooms:', err);
+      return [];
     }
   };
 
@@ -127,9 +130,9 @@ export default function Dashboard() {
     }
   };
 
-  const fetchRoomOfDay = async () => {
+  const fetchRoomOfDay = async (roomsList: Room[]) => {
     try {
-      if (rooms.length < 2) {
+      if (roomsList.length < 2) {
         setTodayRoom(null);
         return;
       }
@@ -167,7 +170,7 @@ export default function Dashboard() {
       }
 
       // Build cycle from room IDs
-      const roomIds = rooms.map((r) => r.id);
+      const roomIds = roomsList.map((r) => r.id);
       let { newCycle, newPointer } = initializeCycle(
         roomIds,
         appConfig.room_cycle || [],
@@ -199,7 +202,7 @@ export default function Dashboard() {
       );
 
       // Find the room object
-      const room = rooms.find((r) => r.id === todayRoomId);
+      const room = roomsList.find((r) => r.id === todayRoomId);
 
       setRoomOfDayState({
         ...appConfig,
@@ -230,8 +233,8 @@ export default function Dashboard() {
 
       if (insertError) throw insertError;
 
-      await fetchRooms();
-      await fetchRoomOfDay();
+      const roomsData = await fetchRooms();
+      await fetchRoomOfDay(roomsData);
 
       setRoomFormData({ name: '', color: '#FFFF00' });
       setShowAddRoom(false);
@@ -260,8 +263,8 @@ export default function Dashboard() {
 
       if (updateError) throw updateError;
 
-      await fetchRooms();
-      await fetchRoomOfDay();
+      const roomsData = await fetchRooms();
+      await fetchRoomOfDay(roomsData);
 
       setRoomFormData({ name: '', color: '#FFFF00' });
       setEditingRoom(null);
@@ -289,9 +292,9 @@ export default function Dashboard() {
 
       if (deleteError) throw deleteError;
 
-      await fetchRooms();
+      const roomsData = await fetchRooms();
       await fetchChores();
-      await fetchRoomOfDay();
+      await fetchRoomOfDay(roomsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete room');
     }
@@ -396,7 +399,7 @@ export default function Dashboard() {
       }
 
       await fetchChores();
-      await fetchRoomOfDay();
+      await fetchRoomOfDay(rooms);
 
       setFormData({ name: '', room_id: null, recurrence: 'weekly', due_next: '', notes: '' });
       setShowCreateForm(false);

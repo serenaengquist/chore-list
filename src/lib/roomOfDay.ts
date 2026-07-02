@@ -16,7 +16,7 @@ function seededShuffle<T>(array: T[], dateSeed: string): T[] {
 
   for (let i = arr.length - 1; i > 0; i--) {
     rng = (rng * 1103515245 + 12345) % 2147483648;
-    const j = (rng / 65536) % (i + 1);
+    const j = Math.floor(rng / 65536) % (i + 1);
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
@@ -37,7 +37,9 @@ export function getTodayDateString(): string {
  * Check if we need to advance the cycle (crossing day boundary)
  */
 export function shouldAdvanceCycle(lastAdvancedDate: string): boolean {
-  return lastAdvancedDate !== getTodayDateString();
+  // Normalize to YYYY-MM-DD in case the stored value is a full timestamp
+  const normalized = lastAdvancedDate?.slice(0, 10);
+  return normalized !== getTodayDateString();
 }
 
 /**
