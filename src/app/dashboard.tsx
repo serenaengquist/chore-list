@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [confirmingDeleteRoomId, setConfirmingDeleteRoomId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
   const [creating, setCreating] = useState(false);
@@ -96,9 +97,15 @@ export default function Dashboard() {
   // Auto-revert the delete confirmation after a few seconds of inactivity
   useEffect(() => {
     if (!confirmingDeleteId) return;
-    const timeout = setTimeout(() => setConfirmingDeleteId(null), 3000);
+    const timeout = setTimeout(() => setConfirmingDeleteId(null), 6000);
     return () => clearTimeout(timeout);
   }, [confirmingDeleteId]);
+
+  useEffect(() => {
+    if (!confirmingDeleteRoomId) return;
+    const timeout = setTimeout(() => setConfirmingDeleteRoomId(null), 6000);
+    return () => clearTimeout(timeout);
+  }, [confirmingDeleteRoomId]);
 
   // Reset the delete confirmation whenever the detail modal switches chores or closes
   useEffect(() => {
@@ -288,15 +295,6 @@ export default function Dashboard() {
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    const affectedChores = chores.filter((c) => c.room_id === roomId).length;
-    const roomName = rooms.find((r) => r.id === roomId)?.name;
-
-    const confirmDelete = window.confirm(
-      `Delete room "${roomName}"?\n\n${affectedChores} chore(s) will be untagged.\n\nThis cannot be undone.`
-    );
-
-    if (!confirmDelete) return;
-
     try {
       const { error: deleteError } = await supabase
         .from('rooms')
@@ -308,6 +306,7 @@ export default function Dashboard() {
       const roomsData = await fetchRooms();
       await fetchChores();
       await fetchRoomOfDay(roomsData);
+      setConfirmingDeleteRoomId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete room');
     }
@@ -717,65 +716,93 @@ export default function Dashboard() {
                   key={room.id}
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    flexDirection: 'column',
+                    gap: 'var(--space-sm)',
                     padding: 'var(--space-sm) var(--space-md)',
                     borderBottom: '1px solid var(--color-surface-sunk)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-                    <div
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        backgroundColor: room.color,
-                        borderRadius: '2px',
-                        border: '1px solid var(--color-fg)',
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 'var(--text-body-md)' }}>{room.name}</div>
-                      <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
-                        {roomChoreCount} chore{roomChoreCount !== 1 ? 's' : ''}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          backgroundColor: room.color,
+                          borderRadius: '2px',
+                          border: '1px solid var(--color-fg)',
+                        }}
+                      />
+                      <div>
+                        <div style={{ fontSize: 'var(--text-body-md)' }}>{room.name}</div>
+                        <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
+                          {roomChoreCount} chore{roomChoreCount !== 1 ? 's' : ''}
+                        </div>
                       </div>
                     </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                      <button
+                        onClick={() => {
+                          setEditingRoom(room);
+                          setRoomFormData({ name: room.name, color: room.color });
+                          setShowEditRoom(true);
+                        }}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 'var(--text-body-sm)',
+                          fontFamily: 'var(--font-mono)',
+                          border: '1px solid var(--color-fg-muted)',
+                          borderRadius: '6px',
+                          background: 'transparent',
+                          color: 'var(--color-fg)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirmingDeleteRoomId === room.id) {
+                            handleDeleteRoom(room.id);
+                          } else {
+                            setConfirmingDeleteRoomId(room.id);
+                          }
+                        }}
+                        style={
+                          confirmingDeleteRoomId === room.id
+                            ? {
+                                padding: '4px 10px',
+                                fontSize: 'var(--text-body-sm)',
+                                fontFamily: 'var(--font-mono)',
+                                border: '1px solid var(--color-glitch-red)',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--color-glitch-red)',
+                                color: 'var(--color-surface)',
+                                cursor: 'pointer',
+                              }
+                            : {
+                                padding: '4px 10px',
+                                fontSize: 'var(--text-body-sm)',
+                                fontFamily: 'var(--font-mono)',
+                                border: '1px solid var(--color-glitch-red)',
+                                borderRadius: '6px',
+                                background: 'transparent',
+                                color: 'var(--color-glitch-red)',
+                                cursor: 'pointer',
+                              }
+                        }
+                      >
+                        {confirmingDeleteRoomId === room.id ? 'Confirm Delete?' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                    <button
-                      onClick={() => {
-                        setEditingRoom(room);
-                        setRoomFormData({ name: room.name, color: room.color });
-                        setShowEditRoom(true);
-                      }}
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 'var(--text-body-sm)',
-                        fontFamily: 'var(--font-mono)',
-                        border: '1px solid var(--color-fg-muted)',
-                        borderRadius: '6px',
-                        background: 'transparent',
-                        color: 'var(--color-fg)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteRoom(room.id)}
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 'var(--text-body-sm)',
-                        fontFamily: 'var(--font-mono)',
-                        border: '1px solid var(--color-glitch-red)',
-                        borderRadius: '6px',
-                        background: 'transparent',
-                        color: 'var(--color-glitch-red)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {confirmingDeleteRoomId === room.id && (
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-glitch-red)', textAlign: 'right' }}>
+                      {roomChoreCount > 0
+                        ? `${roomChoreCount} chore${roomChoreCount !== 1 ? 's' : ''} will be untagged. This cannot be undone.`
+                        : 'This cannot be undone.'}
+                    </div>
+                  )}
                 </div>
               );
             })}
