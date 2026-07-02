@@ -28,71 +28,53 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const mockChores: Chore[] = [
-        {
-          id: '1',
-          name: 'Take out trash',
-          room: 'Kitchen',
-          status: 'pending',
-          due_next: '2026-07-03',
-          recurrence: 'weekly',
-          notes: 'Bin goes out Tuesday nights',
-        },
-        {
-          id: '2',
-          name: 'Clean bathroom',
-          room: 'Bathroom',
-          status: 'pending',
-          due_next: '2026-07-05',
-          recurrence: 'weekly',
-          notes: 'Toilet, sink, mirror, floor',
-        },
-        {
-          id: '3',
-          name: 'Vacuum living room',
-          room: 'Living Room',
-          status: 'done',
-          due_next: '2026-07-09',
-          recurrence: 'weekly',
-          notes: 'Focus under couch cushions',
-        },
-        {
-          id: '4',
-          name: 'Wash dishes',
-          room: 'Kitchen',
-          status: 'pending',
-          due_next: '2026-07-02',
-          recurrence: 'daily',
-          notes: 'Load dishwasher or hand wash',
-        },
-        {
-          id: '5',
-          name: 'Do laundry',
-          room: 'Laundry',
-          status: 'pending',
-          due_next: '2026-07-04',
-          recurrence: 'weekly',
-          notes: 'Check pockets, use cold water',
-        },
-      ];
+      const { data, error: fetchError } = await supabase
+        .from('chores')
+        .select('*')
+        .order('status', { ascending: true })
+        .order('created_at', { ascending: false });
 
-      setChores(mockChores);
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setChores(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load chores');
+      console.error('Error fetching chores:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleDone = (id: string, e: React.MouseEvent) => {
+  const toggleDone = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setChores((prev) =>
-      prev.map((chore) =>
-        chore.id === id
-          ? { ...chore, status: chore.status === 'pending' ? 'done' : 'pending' }
-          : chore
-      )
-    );
+
+    const chore = chores.find((c) => c.id === id);
+    if (!chore) return;
+
+    const newStatus = chore.status === 'pending' ? 'done' : 'pending';
+
+    try {
+      const { error: updateError } = await supabase
+        .from('chores')
+        .update({ status: newStatus })
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update local state
+      setChores((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, status: newStatus } : c
+        )
+      );
+    } catch (err) {
+      console.error('Error updating chore:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update chore');
+    }
   };
 
   const handleRowClick = (chore: Chore, e: React.MouseEvent) => {
@@ -302,12 +284,23 @@ export default function Dashboard() {
               <input
                 type="checkbox"
                 checked={selectedChore.status === 'done'}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const newStatus = selectedChore.status === 'pending' ? 'done' : 'pending';
-                  setChores((prev) =>
-                    prev.map((c) => (c.id === selectedChore.id ? { ...c, status: newStatus } : c))
-                  );
-                  setSelectedChore({ ...selectedChore, status: newStatus });
+                  try {
+                    const { error: updateError } = await supabase
+                      .from('chores')
+                      .update({ status: newStatus })
+                      .eq('id', selectedChore.id);
+
+                    if (updateError) throw updateError;
+
+                    setChores((prev) =>
+                      prev.map((c) => (c.id === selectedChore.id ? { ...c, status: newStatus } : c))
+                    );
+                    setSelectedChore({ ...selectedChore, status: newStatus });
+                  } catch (err) {
+                    console.error('Error updating chore:', err);
+                  }
                 }}
                 style={{
                   width: '24px',
