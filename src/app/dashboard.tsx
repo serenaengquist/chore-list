@@ -113,6 +113,11 @@ export default function Dashboard() {
   const pendingCount = chores.filter((c) => c.status === 'pending').length;
   const doneCount = chores.filter((c) => c.status === 'done').length;
 
+  const gridStyle = {
+    gridTemplateColumns: '44px 1fr 150px 150px',
+    gap: 'var(--space-lg)',
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)', paddingBlock: 'var(--space-3xl)' }}>
       {/* Header */}
@@ -158,8 +163,7 @@ export default function Dashboard() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '44px 1fr auto auto',
-              gap: 'var(--space-md)',
+              ...gridStyle,
               paddingBlock: 'var(--space-md)',
               paddingInline: 'var(--space-lg)',
               borderBottom: 'var(--border-hairline)',
@@ -168,6 +172,7 @@ export default function Dashboard() {
               letterSpacing: 'var(--tracking-wider)',
               color: 'var(--color-fg-muted)',
               fontWeight: 'bold',
+              textAlign: 'left',
             }}
           >
             <div></div>
@@ -183,8 +188,7 @@ export default function Dashboard() {
               onClick={(e) => handleRowClick(chore, e)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '44px 1fr auto auto',
-                gap: 'var(--space-md)',
+                ...gridStyle,
                 paddingBlock: 'var(--space-md)',
                 paddingInline: 'var(--space-lg)',
                 borderBottom: '1px solid var(--color-surface-sunk)',
@@ -193,6 +197,7 @@ export default function Dashboard() {
                 transition: 'background-color 80ms linear',
                 backgroundColor: chore.status === 'done' ? 'var(--color-surface-sunk)' : 'transparent',
                 opacity: chore.status === 'done' ? 0.6 : 1,
+                textAlign: 'left',
               }}
               onMouseEnter={(e) => {
                 if (chore.status === 'pending') {
@@ -223,18 +228,19 @@ export default function Dashboard() {
                 style={{
                   textDecoration: chore.status === 'done' ? 'line-through' : 'none',
                   fontWeight: chore.status === 'pending' ? '500' : '400',
+                  textAlign: 'left',
                 }}
               >
                 {chore.name}
               </div>
 
               {/* Room */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left' }}>
                 {chore.room}
               </div>
 
               {/* Recurrence */}
-              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
                 {chore.recurrence}
               </div>
             </div>
