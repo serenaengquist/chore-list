@@ -2,27 +2,22 @@
  * Room management utilities and color palette
  */
 
+// Curated to 10 mutually-distinct hues (down from 20, several of which were
+// near-duplicates like Coral/Salmon/Orange). The first four reuse the design
+// system's own tokens (voltage yellow, glitch red/green/blue) so room colors
+// stay visually tied to the rest of the app instead of introducing an
+// unrelated neon palette.
 export const COLOR_PALETTE = [
-  { name: 'Voltage Yellow', hex: '#FFFF00' },
-  { name: 'Electric Lime', hex: '#00FF00' },
-  { name: 'Cyan', hex: '#00FFFF' },
-  { name: 'Magenta', hex: '#FF00FF' },
-  { name: 'Red', hex: '#FF0000' },
+  { name: 'Voltage Yellow', hex: '#FFE600' },
+  { name: 'Glitch Red', hex: '#FF3344' },
+  { name: 'Glitch Green', hex: '#10B25A' },
+  { name: 'Glitch Blue', hex: '#2A5BFF' },
   { name: 'Orange', hex: '#FF8800' },
-  { name: 'Pink', hex: '#FF69B4' },
-  { name: 'Purple', hex: '#AA00FF' },
-  { name: 'Deep Blue', hex: '#0055FF' },
-  { name: 'Navy', hex: '#000080' },
-  { name: 'Mint Green', hex: '#98FF98' },
-  { name: 'Teal', hex: '#008080' },
-  { name: 'Coral', hex: '#FF7F50' },
-  { name: 'Salmon', hex: '#FA8072' },
-  { name: 'Peach', hex: '#FFDAB9' },
-  { name: 'Lavender', hex: '#E6E6FA' },
-  { name: 'Slate', hex: '#708090' },
-  { name: 'Charcoal', hex: '#36454F' },
-  { name: 'Forest Green', hex: '#228B22' },
-  { name: 'Rust', hex: '#B7410E' },
+  { name: 'Purple', hex: '#8B5CF6' },
+  { name: 'Pink', hex: '#EC4899' },
+  { name: 'Teal', hex: '#14B8A6' },
+  { name: 'Navy', hex: '#1E3A8A' },
+  { name: 'Charcoal', hex: '#475569' },
 ];
 
 export interface Room {

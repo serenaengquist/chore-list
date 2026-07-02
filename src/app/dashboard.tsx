@@ -11,7 +11,7 @@ import {
   selectFeaturedTasks,
   AppConfig,
 } from '@/lib/roomOfDay';
-import { Room, COLOR_PALETTE, validateRoomName } from '@/lib/rooms';
+import { Room, COLOR_PALETTE, validateRoomName, getColorName } from '@/lib/rooms';
 
 interface Chore {
   id: string;
@@ -55,7 +55,7 @@ export default function Dashboard() {
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [showEditRoom, setShowEditRoom] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [roomFormData, setRoomFormData] = useState({ name: '', color: '#FFFF00' });
+  const [roomFormData, setRoomFormData] = useState({ name: '', color: '#FFE600' });
   const [roomFormError, setRoomFormError] = useState<string | null>(null);
 
   // Room of the Day state
@@ -249,7 +249,7 @@ export default function Dashboard() {
       const roomsData = await fetchRooms();
       await fetchRoomOfDay(roomsData);
 
-      setRoomFormData({ name: '', color: '#FFFF00' });
+      setRoomFormData({ name: '', color: '#FFE600' });
       setShowAddRoom(false);
     } catch (err) {
       setRoomFormError(err instanceof Error ? err.message : 'Failed to create room');
@@ -279,7 +279,7 @@ export default function Dashboard() {
       const roomsData = await fetchRooms();
       await fetchRoomOfDay(roomsData);
 
-      setRoomFormData({ name: '', color: '#FFFF00' });
+      setRoomFormData({ name: '', color: '#FFE600' });
       setEditingRoom(null);
       setShowEditRoom(false);
     } catch (err) {
@@ -534,7 +534,7 @@ export default function Dashboard() {
         <button
           onClick={() => {
             setEditingRoom(null);
-            setRoomFormData({ name: '', color: '#FFFF00' });
+            setRoomFormData({ name: '', color: '#FFE600' });
             setShowAddRoom(true);
           }}
           style={{
@@ -748,14 +748,14 @@ export default function Dashboard() {
                         setShowEditRoom(true);
                       }}
                       style={{
-                        padding: '4px 8px',
+                        padding: '4px 10px',
                         fontSize: 'var(--text-body-sm)',
                         fontFamily: 'var(--font-mono)',
-                        border: 'none',
+                        border: '1px solid var(--color-fg-muted)',
+                        borderRadius: '6px',
                         background: 'transparent',
                         color: 'var(--color-fg)',
                         cursor: 'pointer',
-                        textDecoration: 'underline',
                       }}
                     >
                       Edit
@@ -763,14 +763,14 @@ export default function Dashboard() {
                     <button
                       onClick={() => handleDeleteRoom(room.id)}
                       style={{
-                        padding: '4px 8px',
+                        padding: '4px 10px',
                         fontSize: 'var(--text-body-sm)',
                         fontFamily: 'var(--font-mono)',
-                        border: 'none',
+                        border: '1px solid var(--color-glitch-red)',
+                        borderRadius: '6px',
                         background: 'transparent',
                         color: 'var(--color-glitch-red)',
                         cursor: 'pointer',
-                        textDecoration: 'underline',
                       }}
                     >
                       Delete
@@ -993,8 +993,11 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
-                  Color
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  <span>Color</span>
+                  <span style={{ fontSize: 'var(--text-body-sm)', textTransform: 'none', letterSpacing: 'normal', color: 'var(--color-fg)' }}>
+                    {getColorName(roomFormData.color)}
+                  </span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-sm)' }}>
                   {COLOR_PALETTE.map((color) => (
@@ -1003,6 +1006,7 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => setRoomFormData({ ...roomFormData, color: color.hex })}
                       title={color.name}
+                      aria-label={color.name}
                       style={{
                         width: '100%',
                         aspectRatio: '1',
@@ -1102,8 +1106,11 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
-                  Color
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  <span>Color</span>
+                  <span style={{ fontSize: 'var(--text-body-sm)', textTransform: 'none', letterSpacing: 'normal', color: 'var(--color-fg)' }}>
+                    {getColorName(roomFormData.color)}
+                  </span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-sm)' }}>
                   {COLOR_PALETTE.map((color) => (
@@ -1112,6 +1119,7 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => setRoomFormData({ ...roomFormData, color: color.hex })}
                       title={color.name}
+                      aria-label={color.name}
                       style={{
                         width: '100%',
                         aspectRatio: '1',
