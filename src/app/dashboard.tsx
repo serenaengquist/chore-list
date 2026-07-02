@@ -13,11 +13,29 @@ interface Chore {
   notes?: string;
 }
 
+interface CreateFormData {
+  name: string;
+  room: string;
+  recurrence: 'daily' | 'weekly' | 'one-off';
+  due_next?: string;
+  notes?: string;
+}
+
 export default function Dashboard() {
   const [chores, setChores] = useState<Chore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState<CreateFormData>({
+    name: '',
+    room: '',
+    recurrence: 'weekly',
+    due_next: '',
+    notes: '',
+  });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChores();
@@ -65,7 +83,6 @@ export default function Dashboard() {
         throw updateError;
       }
 
-      // Update local state
       setChores((prev) =>
         prev.map((c) =>
           c.id === id ? { ...c, status: newStatus } : c
@@ -78,14 +95,66 @@ export default function Dashboard() {
   };
 
   const handleRowClick = (chore: Chore, e: React.MouseEvent) => {
-    // Don't open modal if clicking checkbox
     if ((e.target as HTMLElement).type === 'checkbox') {
       return;
     }
     setSelectedChore(chore);
   };
 
-  // Sort: pending first, done last
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!formData.name.trim()) {
+      setFormError('Chore name is required');
+      return;
+    }
+
+    if (!formData.room.trim()) {
+      setFormError('Room is required');
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      const { error: insertError } = await supabase
+        .from('chores')
+        .insert([
+          {
+            name: formData.name.trim(),
+            room: formData.room.trim(),
+            recurrence: formData.recurrence,
+            due_next: formData.due_next || null,
+            notes: formData.notes || null,
+            status: 'pending',
+          },
+        ]);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      // Refresh chores
+      await fetchChores();
+
+      // Reset form and close modal
+      setFormData({
+        name: '',
+        room: '',
+        recurrence: 'weekly',
+        due_next: '',
+        notes: '',
+      });
+      setShowCreateForm(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to create chore');
+      console.error('Error creating chore:', err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const sortedChores = [...chores].sort((a, b) => {
     if (a.status === 'pending' && b.status === 'done') return -1;
     if (a.status === 'done' && b.status === 'pending') return 1;
@@ -231,14 +300,203 @@ export default function Dashboard() {
       {/* Add Chore CTA */}
       {!loading && !error && (
         <div style={{ textAlign: 'center', paddingTop: 'var(--space-xl)' }}>
-          <button className="btn-primary" style={{ padding: 'var(--space-md) var(--space-xl)' }}>
+          <button
+            className="btn-primary"
+            onClick={() => setShowCreateForm(true)}
+            style={{ padding: 'var(--space-md) var(--space-xl)' }}
+          >
             + Add a Chore
           </button>
         </div>
       )}
 
+      {/* Create Chore Modal */}
+      {showCreateForm && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 'var(--space-lg)',
+          }}
+          onClick={() => !creating && setShowCreateForm(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+              <h2 style={{ margin: 0 }}>NEW CHORE</h2>
+              <button
+                onClick={() => !creating && setShowCreateForm(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-fg)',
+                  padding: 0,
+                  lineHeight: '1',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Error */}
+            {formError && (
+              <div className="card" style={{ marginBottom: 'var(--space-lg)', borderColor: 'var(--color-glitch-red)', backgroundColor: 'var(--color-surface)' }}>
+                <div style={{ color: 'var(--color-glitch-red)', fontSize: 'var(--text-body-sm)' }}>
+                  {formError}
+                </div>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              {/* Name Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Chore Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Wash dishes"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  disabled={creating}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                  }}
+                />
+              </div>
+
+              {/* Room Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Room *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Kitchen, Bathroom"
+                  value={formData.room}
+                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                  disabled={creating}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                  }}
+                />
+              </div>
+
+              {/* Recurrence Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Recurrence
+                </label>
+                <select
+                  value={formData.recurrence}
+                  onChange={(e) => setFormData({ ...formData, recurrence: e.target.value as 'daily' | 'weekly' | 'one-off' })}
+                  disabled={creating}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                    border: 'var(--border-hairline)',
+                    borderRadius: 'var(--radius-lg)',
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-fg)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="one-off">One-off</option>
+                </select>
+              </div>
+
+              {/* Due Date Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Due Next
+                </label>
+                <input
+                  type="date"
+                  value={formData.due_next}
+                  onChange={(e) => setFormData({ ...formData, due_next: e.target.value })}
+                  disabled={creating}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                  }}
+                />
+              </div>
+
+              {/* Notes Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)', marginBottom: 'var(--space-sm)' }}>
+                  Notes
+                </label>
+                <textarea
+                  placeholder="Add any instructions or context..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  disabled={creating}
+                  style={{
+                    width: '100%',
+                    padding: '10px 13px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-body-md)',
+                    minHeight: '80px',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 'var(--space-md)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowCreateForm(false)}
+                  disabled={creating}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={creating}
+                  style={{ flex: 1 }}
+                >
+                  {creating ? 'Creating...' : 'Create Chore'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
-      {selectedChore && (
+      {selectedChore && !showCreateForm && (
         <div
           style={{
             position: 'fixed',
