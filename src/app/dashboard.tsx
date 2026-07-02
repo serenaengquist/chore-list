@@ -216,6 +216,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('chores')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      await fetchChores();
+      setSelectedChore(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete chore');
+      console.error('Error deleting chore:', err);
+    }
+  };
+
   const sortedChores = [...chores].sort((a, b) => {
     if (a.status === 'pending' && b.status === 'done') return -1;
     if (a.status === 'done' && b.status === 'pending') return 1;
@@ -683,20 +702,29 @@ export default function Dashboard() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px dashed var(--color-hairline)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={() => openEditForm(selectedChore)}
+                  style={{ flex: 1 }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => handleDuplicate(selectedChore)}
+                  style={{ flex: 1 }}
+                >
+                  Duplicate
+                </button>
+              </div>
               <button
                 className="btn-secondary"
-                onClick={() => openEditForm(selectedChore)}
-                style={{ flex: 1 }}
+                onClick={() => handleDelete(selectedChore.id)}
+                style={{ borderColor: 'var(--color-glitch-red)', color: 'var(--color-glitch-red)' }}
               >
-                Edit
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => handleDuplicate(selectedChore)}
-                style={{ flex: 1 }}
-              >
-                Duplicate
+                Delete
               </button>
             </div>
           </div>
