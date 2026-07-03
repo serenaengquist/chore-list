@@ -8,18 +8,18 @@ colors:
   on-primary: "#0B0B0B"
   secondary: "#0B0B0B"
   on-secondary: "#F4EFE2"
-  tertiary: "#7A776E"
+  tertiary: "#6B685F"
   neutral: "#F4EFE2"
   surface: "#FFFDF5"
-  surface-sunk: "#EBE5D4"
+  surface-sunk: "#EFE9D9"
   on-surface: "#0B0B0B"
-  on-surface-muted: "#7A776E"
+  on-surface-muted: "#6B685F"
   border: "#0B0B0B"
   focus: "#FFE600"
-  glitch-red: "#FF3344"
+  glitch-red: "#DC1F3C"
   glitch-green: "#10B25A"
   glitch-blue: "#2A5BFF"
-  error: "#FF3344"
+  error: "#DC1F3C"
   success: "#10B25A"
   info: "#2A5BFF"
 typography:
@@ -100,12 +100,12 @@ elevation:
   rest: "4px 4px 0 0 #0B0B0B"
   hover: "6px 6px 0 0 #0B0B0B"
   press: "0 0 0 0 #0B0B0B"
-  chromatic: "-2px 0 0 0 #FF3344, 2px 0 0 0 #2A5BFF"
-  chromatic-focus: "-3px -3px 0 0 #FF3344, 3px 3px 0 0 #2A5BFF"
+  chromatic: "-2px 0 0 0 #DC1F3C, 2px 0 0 0 #2A5BFF"
+  chromatic-focus: "-3px -3px 0 0 #DC1F3C, 3px 3px 0 0 #2A5BFF"
   ring-focus: "0 0 0 3px #FFE600"
 borders:
   hairline: "1px solid #0B0B0B"
-  hairline-mute: "1px solid #7A776E"
+  hairline-mute: "1px solid #6B685F"
   hairline-voltage: "1px solid #FFE600"
   dashed: "1px dashed #0B0B0B"
 components:
@@ -237,16 +237,16 @@ The palette is a four-layer system: paper substrate, ink/mute neutrals, a single
 | --- | --- | --- |
 | `neutral` | `#F4EFE2` | Primary page and surface background. |
 | `surface` | `#FFFDF5` | Card, input, panel surface. |
-| `surface-sunk` | `#EBE5D4` | Disabled fills, secondary wells. |
+| `surface-sunk` | `#EFE9D9` | Disabled fills, secondary wells. |
 | `on-surface` | `#0B0B0B` | Primary text and hairline borders. |
-| `on-surface-muted` | `#7A776E` | Secondary text, inactive UI. |
+| `on-surface-muted` | `#6B685F` | Secondary text, inactive UI. |
 | `primary` | `#FFE600` | Action fill, focus, selection. |
 | `on-primary` | `#0B0B0B` | Type and iconography on voltage fills. |
-| `glitch-red` | `#FF3344` | Chromatic aberration, destructive cue. |
+| `glitch-red` | `#DC1F3C` | Chromatic aberration, destructive cue. |
 | `glitch-green` | `#10B25A` | Chromatic aberration, success cue. |
 | `glitch-blue` | `#2A5BFF` | Chromatic aberration, info cue. |
 
-Contrast: ink on paper measures roughly 17:1; voltage yellow is used only with ink-black text to keep WCAG AA pass. The mute gray (`#7A776E` on paper) is reserved for non-critical metadata and labels, not body copy.
+Contrast: ink on paper measures roughly 17:1; voltage yellow is used only with ink-black text to keep WCAG AA pass. The mute gray (`#6B685F` on paper) is reserved for non-critical metadata and labels, not body copy.
 
 The three glitch accents are never used as flat background fills. They appear as 2–3px offset ghosts on focus, on hover, and inside the signature terminal panel.
 

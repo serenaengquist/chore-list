@@ -9,7 +9,7 @@
 // unrelated neon palette.
 export const COLOR_PALETTE = [
   { name: 'Voltage Yellow', hex: '#FFE600' },
-  { name: 'Glitch Red', hex: '#FF3344' },
+  { name: 'Glitch Red', hex: '#DC1F3C' },
   { name: 'Glitch Green', hex: '#10B25A' },
   { name: 'Glitch Blue', hex: '#2A5BFF' },
   { name: 'Orange', hex: '#FF8800' },

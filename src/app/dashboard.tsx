@@ -584,7 +584,7 @@ export default function Dashboard() {
                     width: '16px',
                     height: '16px',
                     backgroundColor: todayRoom.color,
-                    borderRadius: '2px',
+                    borderRadius: '6px',
                     border: '1px solid var(--color-fg)',
                     flexShrink: 0,
                   }}
@@ -634,7 +634,7 @@ export default function Dashboard() {
                           width: '12px',
                           height: '12px',
                           backgroundColor: room.color,
-                          borderRadius: '2px',
+                          borderRadius: '6px',
                           marginRight: 'var(--space-sm)',
                         }}
                       />
@@ -705,9 +705,9 @@ export default function Dashboard() {
       {/* Room Management Section */}
       {!loading && rooms.length > 0 && (
         <div className="card" style={{ backgroundColor: 'var(--color-surface)' }}>
-          <h3 style={{ margin: '0 0 var(--space-lg) 0', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
+          <h2 style={{ margin: '0 0 var(--space-lg) 0', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
             ROOMS
-          </h3>
+          </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {rooms.map((room) => {
               const roomChoreCount = chores.filter((c) => c.room_id === room.id).length;
@@ -729,7 +729,7 @@ export default function Dashboard() {
                           width: '16px',
                           height: '16px',
                           backgroundColor: room.color,
-                          borderRadius: '2px',
+                          borderRadius: '6px',
                           border: '1px solid var(--color-fg)',
                         }}
                       />
@@ -814,7 +814,7 @@ export default function Dashboard() {
       {!loading && !error && chores.length === 0 && rooms.length > 0 && (
         <div className="card" style={{ textAlign: 'center', paddingBlock: 'var(--space-2xl)' }}>
           <div style={{ fontSize: '2rem', marginBottom: 'var(--space-md)' }}>📋</div>
-          <h3 style={{ marginBottom: 'var(--space-sm)' }}>No chores yet</h3>
+          <h2 style={{ marginBottom: 'var(--space-sm)' }}>No chores yet</h2>
           <p className="text-muted">Add your first chore to get started.</p>
         </div>
       )}
@@ -822,7 +822,7 @@ export default function Dashboard() {
       {!loading && !error && rooms.length === 0 && (
         <div className="card" style={{ textAlign: 'center', paddingBlock: 'var(--space-2xl)' }}>
           <div style={{ fontSize: '2rem', marginBottom: 'var(--space-md)' }}>🏠</div>
-          <h3 style={{ marginBottom: 'var(--space-sm)' }}>Create your first room</h3>
+          <h2 style={{ marginBottom: 'var(--space-sm)' }}>Create your first room</h2>
           <p className="text-muted">Rooms organize your chores. Click "+ Room" to get started.</p>
         </div>
       )}
@@ -916,7 +916,7 @@ export default function Dashboard() {
                           width: '10px',
                           height: '10px',
                           backgroundColor: choreRoom.color,
-                          borderRadius: '1px',
+                          borderRadius: '6px',
                           flexShrink: 0,
                         }}
                       />
@@ -1040,7 +1040,7 @@ export default function Dashboard() {
                         backgroundColor: color.hex,
                         border: roomFormData.color === color.hex ? '3px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
                         cursor: 'pointer',
-                        borderRadius: '2px',
+                        borderRadius: '6px',
                       }}
                     />
                   ))}
@@ -1153,7 +1153,7 @@ export default function Dashboard() {
                         backgroundColor: color.hex,
                         border: roomFormData.color === color.hex ? '3px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
                         cursor: 'pointer',
-                        borderRadius: '2px',
+                        borderRadius: '6px',
                       }}
                     />
                   ))}
@@ -1446,7 +1446,7 @@ export default function Dashboard() {
                         width: '12px',
                         height: '12px',
                         backgroundColor: rooms.find((r) => r.id === selectedChore.room_id)?.color,
-                        borderRadius: '1px',
+                        borderRadius: '6px',
                       }}
                     />
                   )}
