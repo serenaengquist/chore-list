@@ -91,17 +91,22 @@ export function initializeCycle(
 /**
  * Determine which room to feature today.
  * Takes into account override state and cycle.
+ *
+ * `validRoomIds` guards against a stale override: if the overridden room
+ * was deleted after the override was set, we fall back to the cycle
+ * instead of silently resolving to nothing.
  */
 export function getTodayRoom(
   cycle: string[],
   pointer: number,
   overrideDate: string | null,
-  overrideRoom: string | null
+  overrideRoom: string | null,
+  validRoomIds: string[]
 ): string | null {
   const today = getTodayDateString();
 
-  // If override is active for today, use it
-  if (overrideDate === today && overrideRoom) {
+  // If override is active for today and still points at a real room, use it
+  if (overrideDate === today && overrideRoom && validRoomIds.includes(overrideRoom)) {
     return overrideRoom;
   }
 

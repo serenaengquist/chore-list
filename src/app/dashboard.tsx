@@ -191,18 +191,28 @@ export default function Dashboard() {
 
       // Build cycle from room IDs
       const roomIds = roomsList.map((r) => r.id);
+      const storedCycle = appConfig.room_cycle || [];
       let { newCycle, newPointer } = initializeCycle(
         roomIds,
-        appConfig.room_cycle || [],
+        storedCycle,
         appConfig.cycle_pointer || 0
       );
+      const cycleWasRebuilt = JSON.stringify(newCycle) !== JSON.stringify(storedCycle);
 
       // Check if we need to advance the cycle (new day)
-      if (shouldAdvanceCycle(appConfig.cycle_last_advanced_date)) {
+      const advancingToday = shouldAdvanceCycle(appConfig.cycle_last_advanced_date);
+      if (advancingToday) {
         const advanced = advanceCycle(newCycle, newPointer);
         newCycle = advanced.newCycle;
         newPointer = advanced.newPointer;
+      }
 
+      // Persist whenever the cycle actually changed - either because the
+      // room set no longer matched what was stored (e.g. rooms were
+      // deleted/recreated, leaving stale or corrupted entries), or because
+      // a new day rolled over. Without this, a rebuilt-but-unpersisted
+      // cycle only lives in memory for the current render.
+      if (cycleWasRebuilt || advancingToday) {
         await supabase
           .from('app_config')
           .update({
@@ -213,22 +223,40 @@ export default function Dashboard() {
           .eq('owner', 'user');
       }
 
-      // Determine today's room ID (considering override)
+      // Determine today's room ID (considering override, guarded against a
+      // stale override pointing at a since-deleted room)
       const todayRoomId = getTodayRoom(
         newCycle,
         newPointer,
         appConfig.display_override_date,
-        appConfig.display_override_room
+        appConfig.display_override_room,
+        roomsList.map((r) => r.id)
       );
 
       // Find the room object
       const room = roomsList.find((r) => r.id === todayRoomId);
+
+      // If an override was set but points at a room that no longer exists,
+      // clear it in the DB so it doesn't keep dangling until the next
+      // calendar-day rollover.
+      const overrideIsStale =
+        appConfig.display_override_room &&
+        appConfig.display_override_date === getTodayDateString() &&
+        !roomIds.includes(appConfig.display_override_room);
+      if (overrideIsStale) {
+        await supabase
+          .from('app_config')
+          .update({ display_override_date: null, display_override_room: null })
+          .eq('owner', 'user');
+      }
 
       setRoomOfDayState({
         ...appConfig,
         room_cycle: newCycle,
         cycle_pointer: newPointer,
         cycle_last_advanced_date: getTodayDateString(),
+        display_override_date: overrideIsStale ? null : appConfig.display_override_date,
+        display_override_room: overrideIsStale ? null : appConfig.display_override_room,
       });
       setTodayRoom(room || null);
     } catch (err) {
@@ -296,6 +324,15 @@ export default function Dashboard() {
 
   const handleDeleteRoom = async (roomId: string) => {
     try {
+      // Clear any active override pointing at this room so it doesn't
+      // dangle and silently break Room of the Day after deletion.
+      if (roomOfDayState?.display_override_room === roomId) {
+        await supabase
+          .from('app_config')
+          .update({ display_override_date: null, display_override_room: null })
+          .eq('owner', 'user');
+      }
+
       const { error: deleteError } = await supabase
         .from('rooms')
         .delete()
