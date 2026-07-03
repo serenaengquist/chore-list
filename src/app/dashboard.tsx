@@ -394,7 +394,7 @@ export default function Dashboard() {
   };
 
   const handleRowClick = (chore: Chore, e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).type === 'checkbox') {
+    if ((e.target as HTMLInputElement).type === 'checkbox') {
       return;
     }
     setSelectedChore(chore);
