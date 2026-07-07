@@ -588,40 +588,25 @@ export default function Dashboard() {
 
         {/* Right: Controls */}
         <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center' }}>
-          {/* View Toggle - Sliding Pill */}
-          <div style={{ position: 'relative', display: 'inline-flex', border: '1px solid var(--color-fg)', borderRadius: 'var(--radius-lg)', padding: '4px', backgroundColor: 'var(--color-surface)' }}>
-            {/* Sliding background pill */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '4px',
-                left: view === 'checklist' ? '4px' : 'calc(50% + 2px)',
-                width: 'calc(50% - 2px)',
-                height: 'calc(100% - 8px)',
-                backgroundColor: 'var(--color-fg)',
-                borderRadius: 'calc(var(--radius-lg) - 4px)',
-                transition: 'left 160ms var(--ease-snap)',
-                zIndex: 0,
-                pointerEvents: 'none',
-              }}
-            />
-
-            {/* Buttons */}
+          {/* View Toggle - Tab Navigation */}
+          <div style={{ display: 'flex', gap: 'var(--space-2xl)', borderBottom: '1px solid var(--color-fg)', paddingBottom: 'var(--space-sm)' }}>
             <button
               onClick={() => setView('checklist')}
               style={{
-                position: 'relative',
-                zIndex: 1,
-                padding: 'var(--space-sm) var(--space-md)',
+                padding: 'var(--space-sm) 0',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: 'var(--tracking-wider)',
                 border: 'none',
                 background: 'transparent',
-                color: view === 'checklist' ? 'var(--color-bg)' : 'var(--color-fg)',
+                color: 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'color 160ms var(--ease-snap)',
-                width: '50%',
-                textAlign: 'center',
+                transition: 'all 160ms var(--ease-snap)',
+                borderBottom: view === 'checklist' ? '3px solid var(--color-voltage)' : 'none',
+                paddingBottom: view === 'checklist' ? 'calc(var(--space-sm) - 3px)' : 'var(--space-sm)',
+                position: 'relative',
+                bottom: view === 'checklist' ? '-1px' : '0',
               }}
             >
               Checklist
@@ -629,18 +614,20 @@ export default function Dashboard() {
             <button
               onClick={() => setView('rooms')}
               style={{
-                position: 'relative',
-                zIndex: 1,
-                padding: 'var(--space-sm) var(--space-md)',
+                padding: 'var(--space-sm) 0',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: 'var(--tracking-wider)',
                 border: 'none',
                 background: 'transparent',
-                color: view === 'rooms' ? 'var(--color-bg)' : 'var(--color-fg)',
+                color: 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'color 160ms var(--ease-snap)',
-                width: '50%',
-                textAlign: 'center',
+                transition: 'all 160ms var(--ease-snap)',
+                borderBottom: view === 'rooms' ? '3px solid var(--color-voltage)' : 'none',
+                paddingBottom: view === 'rooms' ? 'calc(var(--space-sm) - 3px)' : 'var(--space-sm)',
+                position: 'relative',
+                bottom: view === 'rooms' ? '-1px' : '0',
               }}
             >
               Rooms
