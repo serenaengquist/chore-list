@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [formError, setFormError] = useState<string | null>(null);
 
   // Room management
+  const [showEditRoomsModal, setShowEditRoomsModal] = useState(false);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [showEditRoom, setShowEditRoom] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -634,13 +635,9 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Add Room Button */}
+          {/* Edit Rooms Button */}
           <button
-            onClick={() => {
-              setEditingRoom(null);
-              setRoomFormData({ name: '', color: '#FFE600' });
-              setShowAddRoom(true);
-            }}
+            onClick={() => setShowEditRoomsModal(true)}
             className="btn-primary"
             style={{
               padding: 'var(--space-sm) var(--space-md)',
@@ -649,7 +646,7 @@ export default function Dashboard() {
               whiteSpace: 'nowrap',
             }}
           >
-            + Room
+            Edit Rooms
           </button>
         </div>
       </div>
@@ -1058,6 +1055,204 @@ export default function Dashboard() {
           >
             + Add a Chore
           </button>
+        </div>
+      )}
+
+      {/* Edit Rooms Modal */}
+      {showEditRoomsModal && (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'var(--color-backdrop)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 'var(--space-lg)',
+          }}
+          onClick={() => setShowEditRoomsModal(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowEditRoomsModal(false);
+            }
+          }}
+        >
+          <div
+            className="card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-rooms-title"
+            style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+              <h2 id="edit-rooms-title" style={{ margin: 0 }}>EDIT ROOMS</h2>
+              <button
+                onClick={() => setShowEditRoomsModal(false)}
+                aria-label="Close edit rooms dialog"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-fg)',
+                  padding: 0,
+                  lineHeight: '1',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Add Room Button at top */}
+            <button
+              onClick={() => {
+                setShowEditRoomsModal(false);
+                setEditingRoom(null);
+                setRoomFormData({ name: '', color: '#FFE600' });
+                setShowAddRoom(true);
+              }}
+              className="btn-primary"
+              style={{ width: '100%', marginBottom: 'var(--space-lg)', padding: 'var(--space-sm) var(--space-md)' }}
+            >
+              + Add Room
+            </button>
+
+            {/* Rooms List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              {rooms.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 'var(--space-lg)', color: 'var(--color-fg-muted)' }}>
+                  No rooms yet. Create one to get started.
+                </div>
+              ) : (
+                rooms.map((room) => {
+                  const roomChoreCount = chores.filter((c) => c.room_id === room.id).length;
+                  return (
+                    <div
+                      key={room.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: 'var(--space-md)',
+                        border: '1px solid var(--color-hairline)',
+                        borderRadius: 'var(--radius-lg)',
+                        backgroundColor: 'var(--color-surface)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flex: 1 }}>
+                        <div
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            backgroundColor: room.color,
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-fg)',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: '500' }}>{room.name}</div>
+                          <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)' }}>
+                            {roomChoreCount} chore{roomChoreCount !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                        <button
+                          onClick={() => {
+                            setEditingRoom(room);
+                            setRoomFormData({ name: room.name, color: room.color });
+                            setShowEditRoomsModal(false);
+                            setShowEditRoom(true);
+                          }}
+                          aria-label={`Edit ${room.name}`}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 'var(--text-body-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            border: '1px solid var(--color-fg-muted)',
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--color-fg)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newRoom: Room = {
+                              id: crypto.randomUUID(),
+                              name: `${room.name} (copy)`,
+                              color: room.color,
+                              created_at: new Date().toISOString(),
+                            };
+                            setRooms([...rooms, newRoom]);
+                            supabase.from('rooms').insert([newRoom]).then(() => fetchRooms());
+                          }}
+                          aria-label={`Duplicate ${room.name}`}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 'var(--text-body-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            border: '1px solid var(--color-fg-muted)',
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--color-fg)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          onClick={() => setConfirmingDeleteRoomId(room.id)}
+                          aria-label={`Delete ${room.name}`}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 'var(--text-body-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            border: confirmingDeleteRoomId === room.id ? '1px solid var(--color-glitch-red)' : '1px solid var(--color-fg-muted)',
+                            borderRadius: '6px',
+                            background: confirmingDeleteRoomId === room.id ? 'var(--color-glitch-red)' : 'transparent',
+                            color: confirmingDeleteRoomId === room.id ? 'var(--color-surface)' : 'var(--color-fg)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {confirmingDeleteRoomId === room.id ? 'Confirm?' : 'Delete'}
+                        </button>
+                      </div>
+
+                      {/* Delete Confirmation Message */}
+                      {confirmingDeleteRoomId === room.id && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontSize: 'var(--text-body-sm)',
+                            color: 'var(--color-glitch-red)',
+                            whiteSpace: 'nowrap',
+                            marginBottom: 'var(--space-sm)',
+                          }}
+                        >
+                          Deletes all chores in this room.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       )}
 
