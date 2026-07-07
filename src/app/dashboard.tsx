@@ -65,6 +65,22 @@ export default function Dashboard() {
   const [featuredTasks, setFeaturedTasks] = useState<Chore[]>([]);
   const [showRoomOverride, setShowRoomOverride] = useState(false);
 
+  // View toggle state
+  const [view, setView] = useState<'checklist' | 'rooms'>('checklist');
+
+  useEffect(() => {
+    // Load view preference from localStorage
+    const savedView = localStorage.getItem('choreListView') as 'checklist' | 'rooms' | null;
+    if (savedView) {
+      setView(savedView);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save view preference to localStorage
+    localStorage.setItem('choreListView', view);
+  }, [view]);
+
   useEffect(() => {
     const init = async () => {
       const roomsData = await fetchRooms();
@@ -566,6 +582,39 @@ export default function Dashboard() {
           <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>
             {pendingCount} pending · {doneCount} done
           </p>
+          {/* View Toggle */}
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', alignItems: 'center' }}>
+            <button
+              onClick={() => setView('checklist')}
+              style={{
+                padding: 'var(--space-xs) var(--space-sm)',
+                fontSize: 'var(--text-body-sm)',
+                fontFamily: 'var(--font-mono)',
+                border: view === 'checklist' ? '1px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                background: view === 'checklist' ? 'var(--color-fg)' : 'transparent',
+                color: view === 'checklist' ? 'var(--color-bg)' : 'var(--color-fg)',
+                cursor: 'pointer',
+                transition: 'all 80ms linear',
+              }}
+            >
+              Checklist
+            </button>
+            <button
+              onClick={() => setView('rooms')}
+              style={{
+                padding: 'var(--space-xs) var(--space-sm)',
+                fontSize: 'var(--text-body-sm)',
+                fontFamily: 'var(--font-mono)',
+                border: view === 'rooms' ? '1px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                background: view === 'rooms' ? 'var(--color-fg)' : 'transparent',
+                color: view === 'rooms' ? 'var(--color-bg)' : 'var(--color-fg)',
+                cursor: 'pointer',
+                transition: 'all 80ms linear',
+              }}
+            >
+              Rooms
+            </button>
+          </div>
         </div>
         <button
           onClick={() => {
@@ -740,7 +789,7 @@ export default function Dashboard() {
       )}
 
       {/* Room Management Section */}
-      {!loading && rooms.length > 0 && (
+      {view === 'rooms' && !loading && rooms.length > 0 && (
         <div className="card" style={{ backgroundColor: 'var(--color-surface)' }}>
           <h2 style={{ margin: '0 0 var(--space-lg) 0', fontSize: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wider)', color: 'var(--color-fg-muted)' }}>
             ROOMS
@@ -865,7 +914,7 @@ export default function Dashboard() {
       )}
 
       {/* Chore Checklist */}
-      {!loading && !error && sortedChores.length > 0 && (
+      {view === 'checklist' && !loading && !error && sortedChores.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
           {/* Header Row */}
           <div
