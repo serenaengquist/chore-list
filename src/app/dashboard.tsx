@@ -797,14 +797,15 @@ export default function Dashboard() {
                       }}
                     />
                   </div>
-                  <div style={{ ...nameSlotStyle, fontWeight: '500', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ ...nameSlotStyle, fontWeight: '500', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: '0' }}>
                     {chore.name}
                   </div>
+                  <div style={{ flex: '1 0 auto' }}></div>
                   <div style={metaSlotStyle}>
-                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left' }}>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left', width: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {getRoomName(chore.room_id)}
                     </div>
-                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left', width: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {chore.recurrence}
                     </div>
                   </div>
@@ -962,10 +963,11 @@ export default function Dashboard() {
             }}
           >
             <div style={checkboxSlotStyle}></div>
-            <div style={{ ...nameSlotStyle, textAlign: 'left' }}>CHORE</div>
+            <div style={{ ...nameSlotStyle, textAlign: 'left', minWidth: '0' }}>CHORE</div>
+            <div style={{ flex: '1 0 auto' }}></div>
             <div style={metaSlotStyle}>
-              <div style={{ textAlign: 'left' }}>ROOM</div>
-              <div style={{ textAlign: 'left' }}>RECURRENCE</div>
+              <div style={{ textAlign: 'left', width: '180px' }}>ROOM</div>
+              <div style={{ textAlign: 'left', width: '120px' }}>RECURRENCE</div>
             </div>
           </div>
 
@@ -1021,13 +1023,16 @@ export default function Dashboard() {
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
+                    minWidth: '0',
                   }}
                 >
                   {chore.name}
                 </div>
 
+                <div style={{ flex: '1 0 auto' }}></div>
+
                 <div style={metaSlotStyle}>
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', width: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {choreRoom && (
                       <div
                         style={{
@@ -1042,7 +1047,7 @@ export default function Dashboard() {
                     {getRoomName(chore.room_id)}
                   </div>
 
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left', width: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {chore.recurrence}
                   </div>
                 </div>
