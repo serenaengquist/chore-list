@@ -135,6 +135,23 @@ textarea:focus {
   box-shadow: var(--shadow-hover), -3px -3px 0 0 var(--color-glitch-red), 3px 3px 0 0 var(--color-glitch-blue);
 }
 
+select {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-md);
+  padding: 10px 13px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-rest);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--color-voltage);
+  box-shadow: var(--shadow-hover), -3px -3px 0 0 var(--color-glitch-red), 3px 3px 0 0 var(--color-glitch-blue);
+}
+
 .card {
   background-color: var(--color-surface);
   border: var(--border-hairline);

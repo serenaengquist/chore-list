@@ -567,30 +567,35 @@ export default function Dashboard() {
   };
   const metaSlotStyle = {
     flex: '0 0 auto',
-    marginLeft: 'auto',
     display: 'flex' as const,
     alignItems: 'center' as const,
-    gap: 'var(--space-lg)',
+    gap: 'var(--space-2xl)',
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3xl)', paddingBlock: 'var(--space-3xl)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2xl)', paddingBlock: 'var(--space-3xl)', paddingInline: 'var(--gutter)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1>CHORE BOARD</h1>
-          <p className="text-muted" style={{ marginTop: 'var(--space-sm)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2xl)' }}>
+        {/* Left: Title + Stats */}
+        <div style={{ flex: 1 }}>
+          <h1 style={{ margin: '0 0 var(--space-md) 0' }}>CHORE BOARD</h1>
+          <p className="text-muted" style={{ margin: 0 }}>
             {pendingCount} pending · {doneCount} done
           </p>
+        </div>
+
+        {/* Right: Controls */}
+        <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center' }}>
           {/* View Toggle */}
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0', border: '1px solid var(--color-fg)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             <button
               onClick={() => setView('checklist')}
               style={{
-                padding: 'var(--space-xs) var(--space-sm)',
+                padding: 'var(--space-sm) var(--space-md)',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
-                border: view === 'checklist' ? '1px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                border: 'none',
+                borderRight: view === 'checklist' ? '1px solid var(--color-fg)' : 'none',
                 background: view === 'checklist' ? 'var(--color-fg)' : 'transparent',
                 color: view === 'checklist' ? 'var(--color-bg)' : 'var(--color-fg)',
                 cursor: 'pointer',
@@ -602,10 +607,10 @@ export default function Dashboard() {
             <button
               onClick={() => setView('rooms')}
               style={{
-                padding: 'var(--space-xs) var(--space-sm)',
+                padding: 'var(--space-sm) var(--space-md)',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
-                border: view === 'rooms' ? '1px solid var(--color-fg)' : '1px solid var(--color-fg-muted)',
+                border: 'none',
                 background: view === 'rooms' ? 'var(--color-fg)' : 'transparent',
                 color: view === 'rooms' ? 'var(--color-bg)' : 'var(--color-fg)',
                 cursor: 'pointer',
@@ -615,25 +620,25 @@ export default function Dashboard() {
               Rooms
             </button>
           </div>
+
+          {/* Add Room Button */}
+          <button
+            onClick={() => {
+              setEditingRoom(null);
+              setRoomFormData({ name: '', color: '#FFE600' });
+              setShowAddRoom(true);
+            }}
+            className="btn-primary"
+            style={{
+              padding: 'var(--space-sm) var(--space-md)',
+              fontSize: 'var(--text-body-sm)',
+              fontFamily: 'var(--font-mono)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            + Room
+          </button>
         </div>
-        <button
-          onClick={() => {
-            setEditingRoom(null);
-            setRoomFormData({ name: '', color: '#FFE600' });
-            setShowAddRoom(true);
-          }}
-          style={{
-            padding: 'var(--space-sm) var(--space-md)',
-            fontSize: 'var(--text-body-sm)',
-            fontFamily: 'var(--font-mono)',
-            border: '1px solid var(--color-fg)',
-            background: 'transparent',
-            color: 'var(--color-fg)',
-            cursor: 'pointer',
-          }}
-        >
-          + Room
-        </button>
       </div>
 
       {/* Loading */}
@@ -740,7 +745,7 @@ export default function Dashboard() {
                   onClick={(e) => handleRowClick(chore, e)}
                   style={{
                     ...rowStyle,
-                    paddingBlock: 'var(--space-md)',
+                    paddingBlock: 'var(--space-lg)',
                     paddingInline: 'var(--space-lg)',
                     borderBottom: '1px solid var(--color-surface-sunk)',
                     cursor: 'pointer',
@@ -770,10 +775,10 @@ export default function Dashboard() {
                     {chore.name}
                   </div>
                   <div style={metaSlotStyle}>
-                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right' }}>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left' }}>
                       {getRoomName(chore.room_id)}
                     </div>
-                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                    <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
                       {chore.recurrence}
                     </div>
                   </div>
@@ -920,7 +925,7 @@ export default function Dashboard() {
           <div
             style={{
               ...rowStyle,
-              paddingBlock: 'var(--space-md)',
+              paddingBlock: 'var(--space-lg)',
               paddingInline: 'var(--space-lg)',
               borderBottom: 'var(--border-hairline)',
               fontSize: 'var(--text-label)',
@@ -933,8 +938,8 @@ export default function Dashboard() {
             <div style={checkboxSlotStyle}></div>
             <div style={{ ...nameSlotStyle, textAlign: 'left' }}>CHORE</div>
             <div style={metaSlotStyle}>
-              <div style={{ textAlign: 'right' }}>ROOM</div>
-              <div style={{ textAlign: 'right' }}>RECURRENCE</div>
+              <div style={{ textAlign: 'left' }}>ROOM</div>
+              <div style={{ textAlign: 'left' }}>RECURRENCE</div>
             </div>
           </div>
 
@@ -947,7 +952,7 @@ export default function Dashboard() {
                 onClick={(e) => handleRowClick(chore, e)}
                 style={{
                   ...rowStyle,
-                  paddingBlock: 'var(--space-md)',
+                  paddingBlock: 'var(--space-lg)',
                   paddingInline: 'var(--space-lg)',
                   borderBottom: '1px solid var(--color-surface-sunk)',
                   cursor: 'pointer',
@@ -970,6 +975,7 @@ export default function Dashboard() {
                   <input
                     type="checkbox"
                     checked={chore.status === 'done'}
+                    aria-label={`Mark ${chore.name} as ${chore.status === 'pending' ? 'done' : 'pending'}`}
                     onChange={(e) => toggleDone(chore.id, e as any)}
                     style={{
                       width: '20px',
@@ -995,7 +1001,7 @@ export default function Dashboard() {
                 </div>
 
                 <div style={metaSlotStyle}>
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'right', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                     {choreRoom && (
                       <div
                         style={{
@@ -1010,7 +1016,7 @@ export default function Dashboard() {
                     {getRoomName(chore.room_id)}
                   </div>
 
-                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'right' }}>
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-fg-muted)', textTransform: 'capitalize', textAlign: 'left' }}>
                     {chore.recurrence}
                   </div>
                 </div>
@@ -1040,13 +1046,14 @@ export default function Dashboard() {
       {/* Add Room Modal */}
       {showAddRoom && (
         <div
+          role="presentation"
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'var(--color-backdrop)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1054,16 +1061,25 @@ export default function Dashboard() {
             padding: 'var(--space-lg)',
           }}
           onClick={() => setShowAddRoom(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowAddRoom(false);
+            }
+          }}
         >
           <div
             className="card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-room-title"
             style={{ maxWidth: '400px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ margin: 0 }}>ADD ROOM</h2>
+              <h2 id="add-room-title" style={{ margin: 0 }}>ADD ROOM</h2>
               <button
                 onClick={() => setShowAddRoom(false)}
+                aria-label="Close add room dialog"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1154,13 +1170,14 @@ export default function Dashboard() {
       {/* Edit Room Modal */}
       {showEditRoom && editingRoom && (
         <div
+          role="presentation"
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'var(--color-backdrop)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1168,16 +1185,25 @@ export default function Dashboard() {
             padding: 'var(--space-lg)',
           }}
           onClick={() => setShowEditRoom(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowEditRoom(false);
+            }
+          }}
         >
           <div
             className="card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-room-title"
             style={{ maxWidth: '400px', width: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ margin: 0 }}>EDIT ROOM</h2>
+              <h2 id="edit-room-title" style={{ margin: 0 }}>EDIT ROOM</h2>
               <button
                 onClick={() => setShowEditRoom(false)}
+                aria-label="Close edit room dialog"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1267,13 +1293,14 @@ export default function Dashboard() {
       {/* Create/Edit Chore Form Modal */}
       {(showCreateForm || editingChore) && (
         <div
+          role="presentation"
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'var(--color-backdrop)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1281,16 +1308,26 @@ export default function Dashboard() {
             padding: 'var(--space-lg)',
           }}
           onClick={() => !creating && (setShowCreateForm(false), setEditingChore(null))}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !creating) {
+              setShowCreateForm(false);
+              setEditingChore(null);
+            }
+          }}
         >
           <div
             className="card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chore-form-title"
             style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ margin: 0 }}>{editingChore ? 'EDIT CHORE' : 'NEW CHORE'}</h2>
+              <h2 id="chore-form-title" style={{ margin: 0 }}>{editingChore ? 'EDIT CHORE' : 'NEW CHORE'}</h2>
               <button
                 onClick={() => !creating && (setShowCreateForm(false), setEditingChore(null))}
+                aria-label={`Close ${editingChore ? 'edit' : 'create'} chore dialog`}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1448,13 +1485,14 @@ export default function Dashboard() {
       {/* Chore Detail Modal */}
       {selectedChore && !editingChore && !showCreateForm && (
         <div
+          role="presentation"
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'var(--color-backdrop)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1462,16 +1500,25 @@ export default function Dashboard() {
             padding: 'var(--space-lg)',
           }}
           onClick={() => setSelectedChore(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSelectedChore(null);
+            }
+          }}
         >
           <div
             className="card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chore-detail-title"
             style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ margin: 0 }}>{selectedChore.name}</h2>
+              <h2 id="chore-detail-title" style={{ margin: 0 }}>{selectedChore.name}</h2>
               <button
                 onClick={() => setSelectedChore(null)}
+                aria-label="Close chore details"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1490,6 +1537,7 @@ export default function Dashboard() {
               <input
                 type="checkbox"
                 checked={selectedChore.status === 'done'}
+                aria-label={`Mark ${selectedChore.name} as ${selectedChore.status === 'pending' ? 'done' : 'pending'}`}
                 onChange={async (e) => {
                   const newStatus = selectedChore.status === 'pending' ? 'done' : 'pending';
                   try {
@@ -1575,6 +1623,7 @@ export default function Dashboard() {
                 <button
                   className="btn-secondary"
                   onClick={() => openEditForm(selectedChore)}
+                  aria-label={`Edit ${selectedChore.name}`}
                   style={{ flex: 1 }}
                 >
                   Edit
@@ -1582,6 +1631,7 @@ export default function Dashboard() {
                 <button
                   className="btn-secondary"
                   onClick={() => handleDuplicate(selectedChore)}
+                  aria-label={`Duplicate ${selectedChore.name}`}
                   style={{ flex: 1 }}
                 >
                   Duplicate
@@ -1596,6 +1646,7 @@ export default function Dashboard() {
                     setConfirmingDeleteId(selectedChore.id);
                   }
                 }}
+                aria-label={confirmingDeleteId === selectedChore.id ? `Confirm delete ${selectedChore.name}` : `Delete ${selectedChore.name}`}
                 style={
                   confirmingDeleteId === selectedChore.id
                     ? { backgroundColor: 'var(--color-glitch-red)', borderColor: 'var(--color-glitch-red)', color: 'var(--color-surface)' }

@@ -106,6 +106,9 @@
   /* Focus ring */
   --ring-focus: 0 0 0 3px var(--color-voltage);
 
+  /* Backdrop */
+  --color-backdrop: rgba(0, 0, 0, 0.5);
+
   /* Motion */
   --ease-snap: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 90ms;
