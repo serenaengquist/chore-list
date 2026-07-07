@@ -588,20 +588,40 @@ export default function Dashboard() {
 
         {/* Right: Controls */}
         <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center' }}>
-          {/* View Toggle */}
-          <div style={{ display: 'flex', gap: '0', border: '1px solid var(--color-fg)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          {/* View Toggle - Sliding Pill */}
+          <div style={{ position: 'relative', display: 'inline-flex', border: '1px solid var(--color-fg)', borderRadius: 'var(--radius-lg)', padding: '4px', backgroundColor: 'var(--color-surface)' }}>
+            {/* Sliding background pill */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '4px',
+                left: view === 'checklist' ? '4px' : 'calc(50% + 2px)',
+                width: 'calc(50% - 2px)',
+                height: 'calc(100% - 8px)',
+                backgroundColor: 'var(--color-fg)',
+                borderRadius: 'calc(var(--radius-lg) - 4px)',
+                transition: 'left 160ms var(--ease-snap)',
+                zIndex: 0,
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Buttons */}
             <button
               onClick={() => setView('checklist')}
               style={{
+                position: 'relative',
+                zIndex: 1,
                 padding: 'var(--space-sm) var(--space-md)',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
                 border: 'none',
-                borderRight: view === 'checklist' ? '1px solid var(--color-fg)' : 'none',
-                background: view === 'checklist' ? 'var(--color-fg)' : 'transparent',
+                background: 'transparent',
                 color: view === 'checklist' ? 'var(--color-bg)' : 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'all 80ms linear',
+                transition: 'color 160ms var(--ease-snap)',
+                width: '50%',
+                textAlign: 'center',
               }}
             >
               Checklist
@@ -609,14 +629,18 @@ export default function Dashboard() {
             <button
               onClick={() => setView('rooms')}
               style={{
+                position: 'relative',
+                zIndex: 1,
                 padding: 'var(--space-sm) var(--space-md)',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
                 border: 'none',
-                background: view === 'rooms' ? 'var(--color-fg)' : 'transparent',
+                background: 'transparent',
                 color: view === 'rooms' ? 'var(--color-bg)' : 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'all 80ms linear',
+                transition: 'color 160ms var(--ease-snap)',
+                width: '50%',
+                textAlign: 'center',
               }}
             >
               Rooms
