@@ -562,8 +562,9 @@ export default function Dashboard() {
     display: 'flex' as const,
   };
   const nameSlotStyle = {
-    flex: '1 1 160px',
+    flex: '0 1 auto',
     minWidth: '120px',
+    maxWidth: '400px',
   };
   const metaSlotStyle = {
     flex: '0 0 auto',
