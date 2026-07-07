@@ -590,24 +590,22 @@ export default function Dashboard() {
         {/* Right: Controls */}
         <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center' }}>
           {/* View Toggle - Tab Navigation */}
-          <div style={{ display: 'flex', gap: 'var(--space-2xl)', borderBottom: '1px solid var(--color-fg)', paddingBottom: 'var(--space-sm)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-3xl)' }}>
             <button
               onClick={() => setView('checklist')}
               style={{
-                padding: 'var(--space-sm) 0',
+                padding: '0',
+                paddingBottom: view === 'checklist' ? '4px' : '6px',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
                 textTransform: 'uppercase',
                 letterSpacing: 'var(--tracking-wider)',
                 border: 'none',
+                borderBottom: view === 'checklist' ? '2px solid var(--color-voltage)' : 'none',
                 background: 'transparent',
                 color: 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'all 160ms var(--ease-snap)',
-                borderBottom: view === 'checklist' ? '3px solid var(--color-voltage)' : 'none',
-                paddingBottom: view === 'checklist' ? 'calc(var(--space-sm) - 3px)' : 'var(--space-sm)',
-                position: 'relative',
-                bottom: view === 'checklist' ? '-1px' : '0',
+                transition: 'border-color 160ms var(--ease-snap), padding-bottom 160ms var(--ease-snap)',
               }}
             >
               Checklist
@@ -615,20 +613,18 @@ export default function Dashboard() {
             <button
               onClick={() => setView('rooms')}
               style={{
-                padding: 'var(--space-sm) 0',
+                padding: '0',
+                paddingBottom: view === 'rooms' ? '4px' : '6px',
                 fontSize: 'var(--text-body-sm)',
                 fontFamily: 'var(--font-mono)',
                 textTransform: 'uppercase',
                 letterSpacing: 'var(--tracking-wider)',
                 border: 'none',
+                borderBottom: view === 'rooms' ? '2px solid var(--color-voltage)' : 'none',
                 background: 'transparent',
                 color: 'var(--color-fg)',
                 cursor: 'pointer',
-                transition: 'all 160ms var(--ease-snap)',
-                borderBottom: view === 'rooms' ? '3px solid var(--color-voltage)' : 'none',
-                paddingBottom: view === 'rooms' ? 'calc(var(--space-sm) - 3px)' : 'var(--space-sm)',
-                position: 'relative',
-                bottom: view === 'rooms' ? '-1px' : '0',
+                transition: 'border-color 160ms var(--ease-snap), padding-bottom 160ms var(--ease-snap)',
               }}
             >
               Rooms
