@@ -569,6 +569,7 @@ export default function Dashboard() {
     flex: '0 0 auto',
     display: 'flex' as const,
     alignItems: 'center' as const,
+    justifyContent: 'flex-start' as const,
     gap: 'var(--space-2xl)',
   };
 
